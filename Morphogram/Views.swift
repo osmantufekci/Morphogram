@@ -65,9 +65,10 @@ struct AddProjectView: View {
     var body: some View {
         NavigationView {
             Form {
-                TextField("Proje Adı", text: $projectName)
                 
                 Section {
+                    TextField("Proje Adı", text: $projectName)
+                    
                     Text("Kategori: \(category.name)")
                         .foregroundColor(.gray)
                 }

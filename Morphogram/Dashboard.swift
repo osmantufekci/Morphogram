@@ -1,38 +1,9 @@
 import SwiftUI
 import SwiftData
 
-extension View {
-    @ViewBuilder
-    func wiggle(isActive: Bool) -> some View {
-        if isActive {
-            modifier(WiggleModifier())
-        } else {
-            self
-        }
-    }
-}
-
-struct WiggleModifier: ViewModifier {
-    @State private var isAnimating = false
-    
-    func body(content: Content) -> some View {
-        content
-            .rotationEffect(.degrees(isAnimating ? 2 : -2))
-            .animation(
-                .easeInOut(duration: 0.2)
-                .repeatForever(autoreverses: true),
-                value: isAnimating
-            )
-            .onAppear {
-                isAnimating = true
-            }
-    }
-}
-
 struct Dashboard: View {
     @Environment(\.modelContext) private var modelContext
     
-    // Query'leri daha basit hale getiriyoruz
     @Query(sort: \Category.name) private var categories: [Category]
     @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
     
@@ -46,17 +17,6 @@ struct Dashboard: View {
     @State private var showingAddCategory = false
     @State private var showingAddPhoto = false
     @State private var isEditing = false
-    
-    var filteredProjects: [Project] {
-        switch selectedFilter {
-        case .all:
-            return allProjects.sorted { $0.lastPhotoDate > $1.lastPhotoDate }
-        case .specific(let category):
-            return allProjects
-                .filter { $0.category?.id == category.id }
-                .sorted { $0.lastPhotoDate > $1.lastPhotoDate }
-        }
-    }
     
     var body: some View {
         NavigationView {
@@ -193,9 +153,7 @@ struct Dashboard: View {
             .toolbar {
                 if !categories.isEmpty {
                     Button(action: {
-                        withAnimation {
-                            isEditing.toggle()
-                        }
+                        isEditing.toggle()
                     }) {
                         Text(isEditing ? "Bitti" : "Düzenle")
                     }
@@ -218,10 +176,23 @@ struct Dashboard: View {
                 select(categories[0])
             }
         }
-        .onChange(of: categories) { _, weee in
+        .onChange(of: categories) { _, newCategories in
             if let category = categories.first {
                 select(category)
             }
+        }
+    }
+}
+
+extension Dashboard {
+    var filteredProjects: [Project] {
+        switch selectedFilter {
+        case .all:
+            return allProjects.sorted { $0.lastPhotoDate > $1.lastPhotoDate }
+        case .specific(let category):
+            return allProjects
+                .filter { $0.category?.id == category.id }
+                .sorted { $0.lastPhotoDate > $1.lastPhotoDate }
         }
     }
     
