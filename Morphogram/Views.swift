@@ -3,14 +3,42 @@ import SwiftData
 import PhotosUI
 
 struct AddCategoryView: View {
-    let modelContext: ModelContext
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     @State private var categoryName = ""
+    
+    private let maxLength = 25
+    
+    private var remainingCharacters: Int {
+        maxLength - categoryName.count
+    }
+    
+    private var isValidName: Bool {
+        !categoryName.isEmpty && categoryName.count <= maxLength
+    }
     
     var body: some View {
         NavigationView {
             Form {
-                TextField("Kategori Adı", text: $categoryName)
+                Section {
+                    TextField("Kategori Adı", text: $categoryName)
+                        .onChange(of: categoryName) { _, newValue in
+                            if newValue.count > maxLength {
+                                categoryName = String(newValue.prefix(maxLength))
+                            }
+                        }
+                    
+                    HStack {
+                        Text("Kalan karakter:")
+                            .foregroundColor(.gray)
+                        Text("\(remainingCharacters)")
+                            .foregroundColor(remainingCharacters < 5 ? .red : .gray)
+                    }
+                    .font(.caption)
+                } footer: {
+                    Text("Kategori adı en fazla \(maxLength) karakter olabilir")
+                        .font(.caption)
+                }
             }
             .navigationTitle("Yeni Kategori")
             .navigationBarItems(
@@ -18,31 +46,30 @@ struct AddCategoryView: View {
                     dismiss()
                 },
                 trailing: Button("Kaydet") {
-                    let category = Category(name: categoryName)
+                    let category = Category(name: categoryName.trimmingCharacters(in: .whitespaces))
                     modelContext.insert(category)
                     dismiss()
                 }
-                .disabled(categoryName.isEmpty)
+                .disabled(!isValidName)
             )
         }
     }
 }
 
 struct AddProjectView: View {
-    let modelContext: ModelContext
+    let category: Category
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     @State private var projectName = ""
-    @State private var selectedCategoryId = ""
-    @Query private var categories: [Category]
     
     var body: some View {
         NavigationView {
             Form {
                 TextField("Proje Adı", text: $projectName)
-                Picker("Kategori", selection: $selectedCategoryId) {
-                    ForEach(categories) { category in
-                        Text(category.name).tag(category.id)
-                    }
+                
+                Section {
+                    Text("Kategori: \(category.name)")
+                        .foregroundColor(.gray)
                 }
             }
             .navigationTitle("Yeni Proje")
@@ -51,20 +78,13 @@ struct AddProjectView: View {
                     dismiss()
                 },
                 trailing: Button("Kaydet") {
-                    if let category = categories.first(where: { $0.id == selectedCategoryId }) {
-                        let project = Project(name: projectName, category: category)
-                        modelContext.insert(project)
-                        category.projects.insert(project, at: 0)
-                        dismiss()
-                    }
+                    let project = Project(name: projectName, category: category)
+                    modelContext.insert(project)
+                    category.projects.insert(project, at: 0)
+                    dismiss()
                 }
-                .disabled(projectName.isEmpty || selectedCategoryId.isEmpty)
+                .disabled(projectName.isEmpty)
             )
-            .onAppear {
-                if let firstCategory = categories.first {
-                    selectedCategoryId = firstCategory.id
-                }
-            }
         }
     }
 }
@@ -153,7 +173,7 @@ struct ProjectCard: View {
 }
 
 struct AddPhotoView: View {
-    let modelContext: ModelContext
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     @Query private var categories: [Category]
     
