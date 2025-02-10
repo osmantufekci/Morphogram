@@ -1,6 +1,34 @@
 import SwiftUI
 import SwiftData
 
+extension View {
+    @ViewBuilder
+    func wiggle(isActive: Bool) -> some View {
+        if isActive {
+            modifier(WiggleModifier())
+        } else {
+            self
+        }
+    }
+}
+
+struct WiggleModifier: ViewModifier {
+    @State private var isAnimating = false
+    
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(isAnimating ? 2 : -2))
+            .animation(
+                .easeInOut(duration: 0.2)
+                .repeatForever(autoreverses: true),
+                value: isAnimating
+            )
+            .onAppear {
+                isAnimating = true
+            }
+    }
+}
+
 struct Dashboard: View {
     @Environment(\.modelContext) private var modelContext
     
@@ -55,6 +83,7 @@ struct Dashboard: View {
                                             select(category)
                                         }
                                     }
+                                    .wiggle(isActive: isEditing)
                                     
                                     if isEditing {
                                         Button(action: {
