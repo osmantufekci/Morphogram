@@ -10,9 +10,22 @@
 		2AF3C9162D5A0BD9003A2740 /* Morphogram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Morphogram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2AF3C9402D5A1492003A2740 /* Exceptions for "Morphogram" folder in "Morphogram" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2AF3C9152D5A0BD9003A2740 /* Morphogram */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2AF3C9182D5A0BD9003A2740 /* Morphogram */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2AF3C9402D5A1492003A2740 /* Exceptions for "Morphogram" folder in "Morphogram" target */,
+			);
 			path = Morphogram;
 			sourceTree = "<group>";
 		};
@@ -255,6 +268,9 @@
 				DEVELOPMENT_TEAM = 377A8WA855;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Morphogram/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Gelişim sürecinizi takip etmek için fotoğraf çekmemiz gerekiyor.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Gelişim sürecinizi takip etmek için fotoğraflarınıza erişmemiz gerekiyor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +300,9 @@
 				DEVELOPMENT_TEAM = 377A8WA855;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Morphogram/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Gelişim sürecinizi takip etmek için fotoğraf çekmemiz gerekiyor.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Gelişim sürecinizi takip etmek için fotoğraflarınıza erişmemiz gerekiyor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
