@@ -179,6 +179,7 @@ struct AddPhotoView: View {
     @Query private var categories: [Category]
     
     @State private var selectedCategory: Category?
+    @State private var selectedProject: Project?
     @State private var selectedPhoto: ProjectPhoto?
     @State private var showingImagePicker = false
     @State private var showingCamera = false
@@ -191,70 +192,80 @@ struct AddPhotoView: View {
                     ForEach(categories) { category in
                         Button(action: {
                             selectedCategory = category
+                            selectedProject = nil
                             selectedPhoto = nil
                         }) {
                             HStack {
                                 Text(category.name)
                                 Spacer()
-                                if category.projects.first?.photos.isEmpty ?? true {
-                                    Text("İlk fotoğraf")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                } else {
-                                    Text("\(category.projects.first?.photos.count ?? 0) fotoğraf")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                                if category == selectedCategory {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
                                 }
                             }
                         }
                     }
                 }
                 
-                Section("Kaynak Seçimi") {
-                    Button(action: {
-                        if let category = selectedCategory {
-                            if category.projects.first?.photos.isEmpty ?? true {
-                                showingCamera = true
-                            } else {
-                                showingSourceSelection = true
+                if let category = selectedCategory {
+                    Section("Proje Seçimi") {
+                        ForEach(category.projects) { project in
+                            Button(action: {
+                                selectedProject = project
+                                selectedPhoto = nil
+                            }) {
+                                HStack {
+                                    Text(project.name)
+                                    Spacer()
+                                    if project == selectedProject {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
                             }
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "camera.fill")
-                            Text("Kameradan Çek")
-                        }
-                    }
-                    
-                    Button(action: {
-                        showingImagePicker = true
-                    }) {
-                        HStack {
-                            Image(systemName: "photo.fill")
-                            Text("Galeriden Seç")
                         }
                     }
                 }
-                .disabled(selectedCategory == nil)
-                .opacity(selectedCategory == nil ? 0.3 : 1)
+                
+                if selectedProject != nil {
+                    Section("Kaynak Seçimi") {
+                        Button(action: {
+                            showingCamera = true
+                        }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                Text("Kameradan Çek")
+                            }
+                        }
+                        
+                        Button(action: {
+                            showingImagePicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "photo.fill")
+                                Text("Galeriden Seç")
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Fotoğraf Ekle")
             .navigationBarItems(leading: Button("İptal") {
                 dismiss()
             })
             .sheet(isPresented: $showingSourceSelection) {
-                if let category = selectedCategory {
-                    SelectReferencePhotoView(category: category) { photo in
+                if let project = selectedProject {
+                    SelectReferencePhotoView(project: project) { photo in
                         selectedPhoto = photo
                         showingCamera = true
                     }
                 }
             }
             .sheet(isPresented: $showingImagePicker) {
-                if let category = selectedCategory {
+                if let project = selectedProject {
                     ImagePicker { image in
                         if let image = image {
-                            savePhoto(image: image, category: category)
+                            savePhoto(image: image, project: project)
                         }
                         dismiss()
                     }
@@ -262,8 +273,8 @@ struct AddPhotoView: View {
             }
             .fullScreenCover(isPresented: $showingCamera) {
                 CameraView(referencePhoto: $selectedPhoto) { newImage in
-                    if let category = selectedCategory {
-                        savePhoto(image: newImage, category: category)
+                    if let project = selectedProject {
+                        savePhoto(image: newImage, project: project)
                     }
                     dismiss()
                 }
@@ -271,92 +282,59 @@ struct AddPhotoView: View {
         }
     }
     
-    
-    
-    private func savePhoto(image: UIImage, category: Category) {
-        print("Fotoğraf kaydetme işlemi başlatıldı")
+    private func savePhoto(image: UIImage, project: Project) {
         let photo = ProjectPhoto()
+        let fileName = ImageManager.shared.generateFileName(forProject: project.id)
         
-        if let existingProject = category.projects.first {
-            print("Mevcut proje bulundu: \(existingProject.name)")
-            let fileName = ImageManager.shared.generateFileName(forProject: existingProject.id)
+        if ImageManager.shared.saveImage(image, withFileName: fileName) {
+            photo.fileName = fileName
+            photo.project = project
+            project.photos.append(photo)
+            project.lastPhotoDate = Date()
+            modelContext.insert(photo)
             
-            if ImageManager.shared.saveImage(image, withFileName: fileName) {
-                photo.fileName = fileName
-                photo.project = existingProject
-                existingProject.photos.append(photo)
-                existingProject.lastPhotoDate = Date()
-                modelContext.insert(photo)
-                do {
-                    try modelContext.save()
-                    print("Fotoğraf ve proje güncelleme başarıyla kaydedildi")
-                } catch {
-                    print("Proje güncellenirken hata oluştu: \(error)")
-                }
+            do {
+                try modelContext.save()
+                print("Fotoğraf başarıyla kaydedildi")
+            } catch {
+                print("Fotoğraf kaydedilirken hata oluştu: \(error)")
             }
-        } else {
-            print("Yeni proje oluşturuluyor: \(category.name)")
-            let project = Project(name: category.name, category: category)
-            let fileName = ImageManager.shared.generateFileName(forProject: project.id)
-            
-            if ImageManager.shared.saveImage(image, withFileName: fileName) {
-                photo.fileName = fileName
-                photo.project = project
-                project.photos.append(photo)
-                
-                modelContext.insert(project)
-                category.projects.append(project)
-                
-                do {
-                    try modelContext.save()
-                    print("Yeni proje ve fotoğraf başarıyla kaydedildi")
-                } catch {
-                    print("Yeni proje kaydedilirken hata oluştu: \(error)")
-                }
-            }
-        }
-        
-        if let fileName = photo.fileName {
-            let exists = ImageManager.shared.verifyImageExists(fileName: fileName)
-            print("Fotoğraf doğrulama: \(exists ? "Başarılı" : "Başarısız")")
         }
     }
 }
 
 struct SelectReferencePhotoView: View {
-    let category: Category
+    let project: Project
     let onPhotoSelected: (ProjectPhoto) -> Void
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
             List {
-                if let project = category.projects.first {
-                    ForEach(project.photos) { photo in
-                        Button(action: {
-                            onPhotoSelected(photo)
-                            dismiss()
-                        }) {
-                            HStack {
-                                if let fileName = photo.fileName {
-                                    AsyncImageView(fileName: fileName)
-                                        .frame(width: 60, height: 60)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                } else {
-                                    Image(systemName: "photo")
-                                        .font(.title)
-                                        .frame(width: 60, height: 60)
-                                        .background(Color.gray.opacity(0.2))
-                                        .cornerRadius(8)
-                                }
-                                
-                                VStack(alignment: .leading) {
-                                    Text(formatDate(photo.createdAt))
-                                        .font(.headline)
-                                    Text("Referans olarak kullan")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
+                ForEach(project.photos) { photo in
+                    Button(action: {
+                        onPhotoSelected(photo)
+                        dismiss()
+                    }) {
+                        HStack {
+                            if let fileName = photo.fileName {
+                                AsyncImageView(fileName: fileName)
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            } else {
+                                Image(systemName: "photo")
+                                    .font(.title)
+                                    .frame(width: 60, height: 60)
+                                    .background(Color.gray.opacity(0.2))
+                                    .cornerRadius(8)
+                            }
+                            
+                            VStack(alignment: .leading) {
+                                Text(formatDate(photo.createdAt))
+                                    .font(.headline)
+                                Text("Referans olarak kullan")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
                         }
                     }
