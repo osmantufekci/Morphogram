@@ -16,7 +16,7 @@ class Category {
 
 @Model
 class Project {
-    enum TrackingFrequency: Codable, Equatable, Hashable {
+    enum TrackingFrequency: Codable, Equatable, Hashable, CaseIterable {
         case daily
         case weekly
         case monthly
@@ -52,6 +52,10 @@ class Project {
                 return days
             }
         }
+        
+        static var allCases: [TrackingFrequency] {
+            [.daily, .weekly, .monthly, .flexible]
+        }
     }
     
     var id: String
@@ -61,8 +65,9 @@ class Project {
     var photos: [ProjectPhoto]
     var trackingFrequency: TrackingFrequency
     var notificationsEnabled: Bool
+    var calendarEnabled: Bool
     
-    init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true) {
+    init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true, calendarEnabled: Bool = false) {
         self.id = UUID().uuidString
         self.name = name
         self.createdAt = Date()
@@ -70,6 +75,7 @@ class Project {
         self.photos = []
         self.trackingFrequency = trackingFrequency
         self.notificationsEnabled = notificationsEnabled
+        self.calendarEnabled = calendarEnabled
     }
 }
 

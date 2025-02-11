@@ -5,6 +5,7 @@ struct Dashboard: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
     
+    @State private var projectToEdit: Project?
     @State private var showingAddProject = false
     @State private var showingAddPhoto = false
     
@@ -35,6 +36,13 @@ struct Dashboard: View {
                         List(allProjects) { project in
                             ProjectCard(project: project)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button {
+                                        projectToEdit = project
+                                    } label: {
+                                        Label("Ayarlar", systemImage: "gear")
+                                    }
+                                    .tint(.blue)
+                                    
                                     Button(role: .destructive) {
                                         deleteProject(project)
                                     } label: {
@@ -70,6 +78,9 @@ struct Dashboard: View {
                 }
             }
             .navigationTitle("Progress Viewer")
+        }
+        .sheet(item: $projectToEdit) { project in
+            AddProjectView(project: project)
         }
         .sheet(isPresented: $showingAddProject) {
             AddProjectView()

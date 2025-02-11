@@ -12,14 +12,17 @@ struct AddProjectView: View {
     @State private var notificationsEnabled: Bool
     @State private var showingNotificationAlert = false
     @State private var hasNotificationPermission = false
+    @State private var calendarEnabled = false
+    @State private var calendarStartDate = Date()
     
     private let existingProject: Project?
     
     init(project: Project? = nil) {
         self.existingProject = project
-        _projectName = State(initialValue: project?.name ?? "")
+        _projectName = State(initialValue: project?.name ?? "w")
         _selectedFrequency = State(initialValue: project?.trackingFrequency ?? .daily)
         _notificationsEnabled = State(initialValue: project?.notificationsEnabled ?? false)
+        _calendarEnabled = State(initialValue: project?.calendarEnabled ?? false)
         if case .custom(let days) = project?.trackingFrequency {
             _customDays = State(initialValue: "\(days)")
             _showingCustomDaysInput = State(initialValue: true)
@@ -92,6 +95,26 @@ struct AddProjectView: View {
                     }
                 }
                 
+                Section {
+                    Toggle("Takvime Ekle", isOn: $calendarEnabled)
+                        .opacity(selectedFrequency != .flexible ? 1 : 0.5)
+                        .disabled(selectedFrequency == .flexible)
+                    
+                    if calendarEnabled && selectedFrequency != .flexible {
+                        DatePicker(
+                            "Başlangıç Tarihi",
+                            selection: $calendarStartDate,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                    }
+                } footer: {
+                    if selectedFrequency == .flexible {
+                        Text("Esnek projelerde takvim etkinliği oluşturulmaz.")
+                            .foregroundColor(.orange)
+                    } else {
+                        Text("Fotoğraf çekme zamanları takviminize eklenecek.")
+                    }
+                }
                 
                 Section("Bilgi") {
                     switch selectedFrequency {
@@ -108,7 +131,7 @@ struct AddProjectView: View {
                     }
                 }
             }
-            .navigationTitle(existingProject == nil ? "Yeni Proje" : "Proje Ayarları")
+            .navigationTitle(existingProject == nil ? "Yeni Proje" : "Ayarlar")
             .navigationBarItems(
                 leading: Button("İptal") {
                     dismiss()
@@ -161,6 +184,7 @@ struct AddProjectView: View {
             project.name = projectName.trimmingCharacters(in: .whitespaces)
             project.trackingFrequency = frequency
             project.notificationsEnabled = notificationsEnabled && hasNotificationPermission
+            project.calendarEnabled = calendarEnabled
             
             // Bildirimleri güncelle
             if project.notificationsEnabled {
@@ -168,18 +192,43 @@ struct AddProjectView: View {
             } else {
                 NotificationManager.shared.cancelNotifications(for: project)
             }
+            
+            // Takvim etkinliğini güncelle
+            if project.calendarEnabled {
+                Task {
+                    await CalendarManager.shared.addRecurringEventToCalendar(
+                        title: "📸 \(project.name) - Fotoğraf Çekimi",
+                        startDate: calendarStartDate,
+                        frequency: project.trackingFrequency,
+                        notes: "Morphogram uygulaması tarafından oluşturuldu"
+                    )
+                }
+            }
         } else {
             // Yeni proje oluştur
             let project = Project(
                 name: projectName.trimmingCharacters(in: .whitespaces),
                 trackingFrequency: frequency,
-                notificationsEnabled: notificationsEnabled && hasNotificationPermission
+                notificationsEnabled: notificationsEnabled && hasNotificationPermission,
+                calendarEnabled: calendarEnabled
             )
             modelContext.insert(project)
             
             // Bildirimleri ayarla
             if project.notificationsEnabled {
                 NotificationManager.shared.scheduleNotification(for: project)
+            }
+            
+            // Takvim etkinliğini oluştur
+            if project.calendarEnabled {
+                Task {
+                    await CalendarManager.shared.addRecurringEventToCalendar(
+                        title: "📸 \(project.name) - Fotoğraf Çekimi",
+                        startDate: calendarStartDate,
+                        frequency: project.trackingFrequency,
+                        notes: "Morphogram uygulaması tarafından oluşturuldu"
+                    )
+                }
             }
         }
         
@@ -228,7 +277,6 @@ struct AsyncImageView: View {
 
 struct ProjectCard: View {
     let project: Project
-    @State private var showingSettings = false
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -236,11 +284,9 @@ struct ProjectCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(project.name)
                         .font(.headline)
-                        .foregroundColor(.black)
-                    
+                        
                     Text(project.trackingFrequency.description)
                         .font(.caption)
-                        .foregroundColor(.gray)
                 }
                 
                 Spacer()
@@ -264,17 +310,6 @@ struct ProjectCard: View {
         }
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
-        .swipeActions(edge: .trailing) {
-            Button {
-                showingSettings = true
-            } label: {
-                Label("Ayarlar", systemImage: "gear")
-            }
-            .tint(.blue)
-        }
-        .sheet(isPresented: $showingSettings) {
-            AddProjectView(project: project)
-        }
     }
     
     private func formatDate(_ date: Date) -> String {

@@ -17,7 +17,7 @@ struct MorphogramApp: App {
             let schema = Schema([
                 Project.self,
                 ProjectPhoto.self
-            ])
+            ], version: .init(1, 0, 1))
             
             let modelConfiguration = ModelConfiguration(
                 schema: schema,

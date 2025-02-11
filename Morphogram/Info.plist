@@ -6,5 +6,7 @@
     <string>Fotoğraf çekmek için kamera erişimi gerekiyor.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Fotoğraflarınızı kaydetmek ve görüntülemek için fotoğraf kitaplığı erişimi gerekiyor.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Etkinlikleri takviminize ekleyebilmek için takvim erişimi gerekiyor.</string>
 </dict>
 </plist>
