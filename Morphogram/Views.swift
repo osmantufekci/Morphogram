@@ -353,7 +353,12 @@ struct AddPhotoView: View {
                 if selectedProject != nil {
                     Section("Kaynak Seçimi") {
                         Button(action: {
-                            showingCamera = true
+                            if let photo = selectedProject?.photos.last {
+                                selectedPhoto = photo
+                                showingSourceSelection = true
+                            } else {
+                                showingCamera = true
+                            }
                         }) {
                             HStack {
                                 Image(systemName: "camera.fill")
