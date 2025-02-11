@@ -2,62 +2,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 
-struct AddCategoryView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) var dismiss
-    @State private var categoryName = ""
-    
-    private let maxLength = 25
-    
-    private var remainingCharacters: Int {
-        maxLength - categoryName.count
-    }
-    
-    private var isValidName: Bool {
-        !categoryName.isEmpty && categoryName.count <= maxLength
-    }
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    TextField("Kategori Adı", text: $categoryName)
-                        .onChange(of: categoryName) { _, newValue in
-                            if newValue.count > maxLength {
-                                categoryName = String(newValue.prefix(maxLength))
-                            }
-                        }
-                    
-                    HStack {
-                        Text("Kalan karakter:")
-                            .foregroundColor(.gray)
-                        Text("\(remainingCharacters)")
-                            .foregroundColor(remainingCharacters < 5 ? .red : .gray)
-                    }
-                    .font(.caption)
-                } footer: {
-                    Text("Kategori adı en fazla \(maxLength) karakter olabilir")
-                        .font(.caption)
-                }
-            }
-            .navigationTitle("Yeni Kategori")
-            .navigationBarItems(
-                leading: Button("İptal") {
-                    dismiss()
-                },
-                trailing: Button("Kaydet") {
-                    let category = Category(name: categoryName.trimmingCharacters(in: .whitespaces))
-                    modelContext.insert(category)
-                    dismiss()
-                }
-                .disabled(!isValidName)
-            )
-        }
-    }
-}
-
 struct AddProjectView: View {
-    let category: Category
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     @State private var projectName = ""
@@ -68,9 +13,6 @@ struct AddProjectView: View {
                 
                 Section {
                     TextField("Proje Adı", text: $projectName)
-                    
-                    Text("Kategori: \(category.name)")
-                        .foregroundColor(.gray)
                 }
             }
             .navigationTitle("Yeni Proje")
@@ -79,9 +21,8 @@ struct AddProjectView: View {
                     dismiss()
                 },
                 trailing: Button("Kaydet") {
-                    let project = Project(name: projectName, category: category)
+                    let project = Project(name: projectName)
                     modelContext.insert(project)
-                    category.projects.insert(project, at: 0)
                     dismiss()
                 }
                 .disabled(projectName.isEmpty)
@@ -138,9 +79,7 @@ struct ProjectCard: View {
                 VStack(alignment: .leading) {
                     Text(project.name)
                         .font(.headline)
-                    Text(project.categoryName)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.black)
                 }
                 
                 Spacer()
@@ -176,9 +115,7 @@ struct ProjectCard: View {
 struct AddPhotoView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
-    @Query private var categories: [Category]
-    
-    @State private var selectedCategory: Category?
+    @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
     @State private var selectedProject: Project?
     @State private var selectedPhoto: ProjectPhoto?
     @State private var showingImagePicker = false
@@ -188,39 +125,18 @@ struct AddPhotoView: View {
     var body: some View {
         NavigationView {
             List {
-                Section("Kategori Seçimi") {
-                    ForEach(categories) { category in
+                Section("Proje Seçimi") {
+                    ForEach(allProjects) { project in
                         Button(action: {
-                            selectedCategory = category
-                            selectedProject = nil
+                            selectedProject = project
                             selectedPhoto = nil
                         }) {
                             HStack {
-                                Text(category.name)
+                                Text(project.name)
                                 Spacer()
-                                if category == selectedCategory {
+                                if project == selectedProject {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.blue)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if let category = selectedCategory {
-                    Section("Proje Seçimi") {
-                        ForEach(category.projects) { project in
-                            Button(action: {
-                                selectedProject = project
-                                selectedPhoto = nil
-                            }) {
-                                HStack {
-                                    Text(project.name)
-                                    Spacer()
-                                    if project == selectedProject {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.blue)
-                                    }
                                 }
                             }
                         }

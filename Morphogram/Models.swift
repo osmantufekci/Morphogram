@@ -18,17 +18,13 @@ class Category {
 class Project {
     var id: String
     var name: String
-    var category: Category?
-    var categoryName: String // Geriye dönük uyumluluk için
     var createdAt: Date
     var lastPhotoDate: Date
     var photos: [ProjectPhoto]
     
-    init(name: String, category: Category) {
+    init(name: String) {
         self.id = UUID().uuidString
         self.name = name
-        self.category = category
-        self.categoryName = category.name
         self.createdAt = Date()
         self.lastPhotoDate = Date()
         self.photos = []

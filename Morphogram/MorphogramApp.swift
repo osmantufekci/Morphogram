@@ -15,7 +15,6 @@ struct MorphogramApp: App {
     init() {
         do {
             let schema = Schema([
-                Category.self,
                 Project.self,
                 ProjectPhoto.self
             ])
