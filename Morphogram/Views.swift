@@ -5,10 +5,26 @@ import PhotosUI
 struct AddProjectView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
-    @State private var projectName = ""
-    @State private var selectedFrequency: Project.TrackingFrequency = .daily
+    @State private var projectName: String
+    @State private var selectedFrequency: Project.TrackingFrequency
     @State private var customDays: String = ""
     @State private var showingCustomDaysInput = false
+    @State private var notificationsEnabled: Bool
+    @State private var showingNotificationAlert = false
+    @State private var hasNotificationPermission = false
+    
+    private let existingProject: Project?
+    
+    init(project: Project? = nil) {
+        self.existingProject = project
+        _projectName = State(initialValue: project?.name ?? "")
+        _selectedFrequency = State(initialValue: project?.trackingFrequency ?? .daily)
+        _notificationsEnabled = State(initialValue: project?.notificationsEnabled ?? false)
+        if case .custom(let days) = project?.trackingFrequency {
+            _customDays = State(initialValue: "\(days)")
+            _showingCustomDaysInput = State(initialValue: true)
+        }
+    }
     
     private var isCustomDaysValid: Bool {
         if let days = Int(customDays) {
@@ -55,6 +71,28 @@ struct AddProjectView: View {
                     }
                 }
                 
+                Section {
+                    Toggle("Hatırlatıcı Bildirimler", isOn: $notificationsEnabled)
+                        .opacity(selectedFrequency != .flexible ? 1 : 0.5)
+                        .disabled(selectedFrequency == .flexible)
+                        .onChange(of: notificationsEnabled) { _, newValue in
+                            if newValue {
+                                requestNotificationPermission()
+                            }
+                        }
+                } footer: {
+                    if selectedFrequency == .flexible {
+                        Text("Esnek projelerde bildirim almazsınız.")
+                            .foregroundColor(.orange)
+                    } else if hasNotificationPermission {
+                        Text("Fotoğraf ekleme zamanı geldiğinde bildirim alırsınız.")
+                    } else {
+                        Text("Bildirimleri kullanabilmek için izin vermeniz gerekiyor.")
+                            .foregroundColor(.orange)
+                    }
+                }
+                
+                
                 Section("Bilgi") {
                     switch selectedFrequency {
                     case .daily:
@@ -70,27 +108,82 @@ struct AddProjectView: View {
                     }
                 }
             }
-            .navigationTitle("Yeni Proje")
+            .navigationTitle(existingProject == nil ? "Yeni Proje" : "Proje Ayarları")
             .navigationBarItems(
                 leading: Button("İptal") {
                     dismiss()
                 },
-                trailing: Button("Kaydet") {
-                    var frequency = selectedFrequency
-                    if case .custom = selectedFrequency, let days = Int(customDays) {
-                        frequency = .custom(days: days)
-                    }
-                    
-                    let project = Project(
-                        name: projectName.trimmingCharacters(in: .whitespaces),
-                        trackingFrequency: frequency
-                    )
-                    modelContext.insert(project)
-                    dismiss()
+                trailing: Button(existingProject == nil ? "Kaydet" : "Güncelle") {
+                    saveProject()
                 }
                 .disabled(projectName.isEmpty || (showingCustomDaysInput && !isCustomDaysValid))
             )
+            .alert("Bildirim İzni", isPresented: $showingNotificationAlert) {
+                Button("Ayarlar'a Git") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("İptal", role: .cancel) {
+                    notificationsEnabled = false
+                }
+            } message: {
+                Text("Bildirimleri kullanabilmek için Ayarlar'dan uygulama bildirimlerini etkinleştirmeniz gerekiyor.")
+            }
+            .task {
+                hasNotificationPermission = await NotificationManager.shared.checkAuthorizationStatus()
+            }
         }
+    }
+    
+    private func requestNotificationPermission() {
+        Task {
+            let authorized = await NotificationManager.shared.requestAuthorization()
+            await MainActor.run {
+                if authorized {
+                    hasNotificationPermission = true
+                } else {
+                    notificationsEnabled = false
+                    showingNotificationAlert = true
+                }
+            }
+        }
+    }
+    
+    private func saveProject() {
+        var frequency = selectedFrequency
+        if case .custom = selectedFrequency, let days = Int(customDays) {
+            frequency = .custom(days: days)
+        }
+        
+        if let project = existingProject {
+            // Mevcut projeyi güncelle
+            project.name = projectName.trimmingCharacters(in: .whitespaces)
+            project.trackingFrequency = frequency
+            project.notificationsEnabled = notificationsEnabled && hasNotificationPermission
+            
+            // Bildirimleri güncelle
+            if project.notificationsEnabled {
+                NotificationManager.shared.scheduleNotification(for: project)
+            } else {
+                NotificationManager.shared.cancelNotifications(for: project)
+            }
+        } else {
+            // Yeni proje oluştur
+            let project = Project(
+                name: projectName.trimmingCharacters(in: .whitespaces),
+                trackingFrequency: frequency,
+                notificationsEnabled: notificationsEnabled && hasNotificationPermission
+            )
+            modelContext.insert(project)
+            
+            // Bildirimleri ayarla
+            if project.notificationsEnabled {
+                NotificationManager.shared.scheduleNotification(for: project)
+            }
+        }
+        
+        dismiss()
     }
 }
 
@@ -135,6 +228,7 @@ struct AsyncImageView: View {
 
 struct ProjectCard: View {
     let project: Project
+    @State private var showingSettings = false
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -170,6 +264,17 @@ struct ProjectCard: View {
         }
         .background(Color.gray.opacity(0.1))
         .cornerRadius(10)
+        .swipeActions(edge: .trailing) {
+            Button {
+                showingSettings = true
+            } label: {
+                Label("Ayarlar", systemImage: "gear")
+            }
+            .tint(.blue)
+        }
+        .sheet(isPresented: $showingSettings) {
+            AddProjectView(project: project)
+        }
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -279,6 +384,11 @@ struct AddPhotoView: View {
             do {
                 try modelContext.save()
                 print("Fotoğraf başarıyla kaydedildi")
+                
+                // Bir sonraki bildirimi planla
+                if project.notificationsEnabled && project.trackingFrequency != .flexible {
+                    NotificationManager.shared.scheduleNotification(for: project)
+                }
             } catch {
                 print("Fotoğraf kaydedilirken hata oluştu: \(error)")
             }

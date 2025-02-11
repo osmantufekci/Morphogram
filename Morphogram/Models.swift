@@ -60,14 +60,16 @@ class Project {
     var lastPhotoDate: Date
     var photos: [ProjectPhoto]
     var trackingFrequency: TrackingFrequency
+    var notificationsEnabled: Bool
     
-    init(name: String, trackingFrequency: TrackingFrequency = .flexible) {
+    init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true) {
         self.id = UUID().uuidString
         self.name = name
         self.createdAt = Date()
         self.lastPhotoDate = Date()
         self.photos = []
         self.trackingFrequency = trackingFrequency
+        self.notificationsEnabled = notificationsEnabled
     }
 }
 
