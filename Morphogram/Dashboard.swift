@@ -77,7 +77,8 @@ struct Dashboard: View {
                     }
                 }
             }
-            .navigationTitle("Progress Viewer")
+            .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(item: $projectToEdit) { project in
             AddProjectView(project: project)
