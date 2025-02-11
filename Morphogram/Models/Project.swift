@@ -1,18 +1,12 @@
-import Foundation
-import SwiftData
+//
+//  Project.swift
+//  Morphogram
+//
+//  Created by Osman Tufekci on 11.02.2025.
+//
 
-@Model
-class Category {
-    var id: String
-    var name: String
-    var projects: [Project]
-    
-    init(name: String) {
-        self.id = UUID().uuidString
-        self.name = name
-        self.projects = []
-    }
-}
+import SwiftData
+import Foundation
 
 @Model
 class Project {
@@ -78,17 +72,3 @@ class Project {
         self.calendarEnabled = calendarEnabled
     }
 }
-
-@Model
-class ProjectPhoto {
-    var id: String
-    var fileName: String?
-    var createdAt: Date
-    var project: Project?
-    
-    init(fileName: String? = nil) {
-        self.id = UUID().uuidString
-        self.fileName = fileName
-        self.createdAt = Date()
-    }
-} 

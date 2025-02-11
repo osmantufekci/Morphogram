@@ -77,7 +77,7 @@ struct Dashboard: View {
                     }
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationTitle("Morphogram")
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(item: $projectToEdit) { project in
