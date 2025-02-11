@@ -6,13 +6,68 @@ struct AddProjectView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     @State private var projectName = ""
+    @State private var selectedFrequency: Project.TrackingFrequency = .daily
+    @State private var customDays: String = ""
+    @State private var showingCustomDaysInput = false
+    
+    private var isCustomDaysValid: Bool {
+        if let days = Int(customDays) {
+            return days > 0 && days <= 365
+        }
+        return false
+    }
     
     var body: some View {
         NavigationView {
             Form {
-                
-                Section {
+                Section("Proje Bilgileri") {
                     TextField("Proje Adı", text: $projectName)
+                }
+                
+                Section("Takip Sıklığı") {
+                    Picker("Takip Sıklığı", selection: $selectedFrequency) {
+                        Text("Günlük").tag(Project.TrackingFrequency.daily)
+                        Text("Haftalık").tag(Project.TrackingFrequency.weekly)
+                        Text("Aylık").tag(Project.TrackingFrequency.monthly)
+                        Text("Esnek").tag(Project.TrackingFrequency.flexible)
+                        Text("Özel").tag(Project.TrackingFrequency.custom(days: max(1, Int(customDays) ?? 1)))
+                    }
+                    .onChange(of: selectedFrequency) { _, newValue in
+                        if case .custom = newValue {
+                            showingCustomDaysInput = true
+                        } else {
+                            showingCustomDaysInput = false
+                        }
+                    }
+                    
+                    if showingCustomDaysInput {
+                        HStack {
+                            TextField("Gün sayısı", text: $customDays)
+                                .keyboardType(.numberPad)
+                            Text("günde bir")
+                        }
+                        
+                        if !customDays.isEmpty && !isCustomDaysValid {
+                            Text("Lütfen 1-365 arası bir sayı girin")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+                
+                Section("Bilgi") {
+                    switch selectedFrequency {
+                    case .daily:
+                        Text("Her gün yeni bir fotoğraf eklemeniz beklenir.")
+                    case .weekly:
+                        Text("Haftada bir fotoğraf eklemeniz beklenir.")
+                    case .monthly:
+                        Text("Ayda bir fotoğraf eklemeniz beklenir.")
+                    case .flexible:
+                        Text("İstediğiniz zaman fotoğraf ekleyebilirsiniz.")
+                    case .custom:
+                        Text("\(customDays) günde bir fotoğraf eklemeniz beklenir.")
+                    }
                 }
             }
             .navigationTitle("Yeni Proje")
@@ -21,11 +76,19 @@ struct AddProjectView: View {
                     dismiss()
                 },
                 trailing: Button("Kaydet") {
-                    let project = Project(name: projectName)
+                    var frequency = selectedFrequency
+                    if case .custom = selectedFrequency, let days = Int(customDays) {
+                        frequency = .custom(days: days)
+                    }
+                    
+                    let project = Project(
+                        name: projectName.trimmingCharacters(in: .whitespaces),
+                        trackingFrequency: frequency
+                    )
                     modelContext.insert(project)
                     dismiss()
                 }
-                .disabled(projectName.isEmpty)
+                .disabled(projectName.isEmpty || (showingCustomDaysInput && !isCustomDaysValid))
             )
         }
     }
@@ -76,10 +139,14 @@ struct ProjectCard: View {
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(project.name)
                         .font(.headline)
                         .foregroundColor(.black)
+                    
+                    Text(project.trackingFrequency.description)
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
                 
                 Spacer()
