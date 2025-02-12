@@ -25,11 +25,14 @@ struct AddPhotoView: View {
                         }) {
                             HStack {
                                 Text(project.name)
-                                Spacer()
                                 if project == selectedProject {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.blue)
                                 }
+                                Spacer()
+                                Text("Son: " + formatDate(project.lastPhotoDate))
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
                         }
                     }

@@ -30,7 +30,7 @@ class NotificationManager {
         
         let content = UNMutableNotificationContent()
         content.title = "Fotoğraf Zamanı!"
-        content.body = "\(project.name) projesi için yeni bir fotoğraf ekleme zamanı geldi."
+        content.body = "\(project.name) için yeni bir fotoğraf ekleme zamanı geldi."
         content.sound = .default
         
         // Bir sonraki fotoğraf zamanını hesapla

@@ -80,12 +80,6 @@ struct ProjectPhotosGridView: View {
         }
     }
     
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
-    }
-    
     private func deletePhoto(_ photo: ProjectPhoto) {
         if let fileName = photo.fileName {
             // Dosyayı sil
