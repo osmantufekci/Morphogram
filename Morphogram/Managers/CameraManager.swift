@@ -129,7 +129,7 @@ struct CameraPreview: UIViewRepresentable {
         let view = CameraPreviewView()
         view.backgroundColor = .black
         view.previewLayer.session = session
-        view.previewLayer.videoGravity = .resizeAspectFill
+        view.previewLayer.videoGravity = .resizeAspect
         return view
     }
     
@@ -147,7 +147,7 @@ struct ReferencePhotoOverlay: View {
         if let image {
             Image(uiImage: image)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: .fit)
                 .opacity(0.5)
         }
     }

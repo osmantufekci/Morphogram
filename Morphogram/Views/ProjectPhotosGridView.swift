@@ -30,10 +30,10 @@ struct ProjectPhotosGridView: View {
                 }) {
                     VStack {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 30))
+                            .font(.system(size: 44))
                             .foregroundColor(.accentColor)
                             .frame(width: 125, height: 125)
-                            .background(Color.black.opacity(0.1))
+                            .background(Color.gray.opacity(0.2))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
