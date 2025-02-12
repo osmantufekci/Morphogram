@@ -19,7 +19,7 @@ struct WiggleModifier: ViewModifier {
         content
             .rotationEffect(.degrees(isAnimating ? 2 : -2))
             .animation(
-                .easeInOut(duration: 0.2)
+                .easeInOut(duration: 0.13)
                 .repeatForever(autoreverses: true),
                 value: isAnimating
             )

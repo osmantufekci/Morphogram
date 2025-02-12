@@ -58,6 +58,26 @@ struct ProjectPhotosGridView: View {
                                 .onChange(of: itemSize) { _, newSize in
                                     itemSize = newSize
                                 }
+                                .contextMenu {
+                                    Button {
+                                        selectedPhotoIndex = index
+                                        isFullscreenPresented = true
+                                    } label: {
+                                        Label("Tam Ekran Görüntüle", systemImage: "arrow.up.left.and.arrow.down.right")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        deletePhoto(photo)
+                                    } label: {
+                                        Label("Sil", systemImage: "trash")
+                                    }
+                                } preview: {
+                                    if let fileName = photo.fileName {
+                                        AsyncImageView(fileName: fileName)
+                                            .frame(maxWidth: 300, maxHeight: 300)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    }
+                                }
                             }
                         }
                         .aspectRatio(1, contentMode: .fit)
@@ -141,25 +161,5 @@ struct ProjectPhotosGridView: View {
         modelContext.delete(photo)
         
         try? modelContext.save()
-    }
-}
-
-struct ColumnStepper: View {
-    let title: String
-    let range: ClosedRange<Int>
-    @Binding var columns: [GridItem]
-    @State private var numColumns: Int
-
-    init(title: String, range: ClosedRange<Int>, columns: Binding<[GridItem]>) {
-        self.title = title
-        self.range = range
-        self._columns = columns
-        self.numColumns = columns.count
-    }
-
-    var body: some View {
-        Stepper(title, value: $numColumns, in: range, step: 1) { _ in
-            withAnimation { columns = Array(repeating: GridItem(.flexible()), count: numColumns) }
-        }
     }
 }
