@@ -91,9 +91,9 @@ struct CameraView: View {
                                 showingReferencePhotoSelection = true
                             }) {
                                 Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
-                                    .font(.title2)
+                                    .font(.title3)
                                     .foregroundColor(.white)
-                                    .padding()
+                                    .padding(4)
                                     .background(Color.black.opacity(0.5))
                                     .clipShape(Circle())
                             }
@@ -128,6 +128,7 @@ struct CameraView: View {
                 }
             }
         }
+        .background(.black)
         .onAppear {
             cameraManager.start()
         }
