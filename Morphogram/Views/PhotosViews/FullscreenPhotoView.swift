@@ -32,6 +32,8 @@ struct FullscreenPhotoView: View {
             )
             .background(Color.black)
             .ignoresSafeArea()
+            .padding(.bottom, 40)
+            .background(.black)
             
             VStack {
                 HStack {
@@ -44,34 +46,46 @@ struct FullscreenPhotoView: View {
                     }
                     
                     Spacer()
-                    
-                    HStack(spacing: 20) {
-                        Button(action: {
-                            if let _ = photos[currentIndex].fileName {
-                                showShareSheet = true
-                            }
-                        }) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title)
-                                .foregroundColor(.white)
-                        }
-                        
-                        Button(action: {
-                            showDeleteConfirmation = true
-                        }) {
-                            Image(systemName: "trash")
-                                .font(.title)
-                                .foregroundColor(.red)
-                        }
-                    }
                 }
                 .padding()
                 
                 Spacer()
                 
-                Text("\(currentIndex + 1) / \(photos.count)")
-                    .foregroundColor(.white)
-                    .padding(.bottom)
+                VStack(spacing: 15) {
+                    HStack {
+                        Button(action: {
+                            if let _ = photos[currentIndex].fileName {
+                                showShareSheet = true
+                            }
+                        }) {
+                            VStack(spacing: 5) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Text("\(currentIndex + 1) / \(photos.count)")
+                            .foregroundColor(.white)
+                            .font(.caption)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            showDeleteConfirmation = true
+                        }) {
+                            VStack(spacing: 5) {
+                                Image(systemName: "trash")
+                                    .font(.title2)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+                .background(.clear)
             }
         }
         .confirmationDialog("Bu fotoğrafı silmek istediğinizden emin misiniz?",
@@ -105,4 +119,8 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+#Preview {
+    FullscreenPhotoView(photos: [ProjectPhoto](), initialIndex: 0, isPresented: .constant(true), onDelete: nil)
 }
