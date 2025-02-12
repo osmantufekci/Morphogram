@@ -8,7 +8,7 @@ import SwiftUI
 
 struct SelectReferencePhotoView: View {
     let project: Project
-    let onPhotoSelected: (ProjectPhoto) -> Void
+    let onPhotoSelected: (ProjectPhoto?) -> Void
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -39,6 +39,19 @@ struct SelectReferencePhotoView: View {
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }
+                        }
+                    }
+                }
+                
+                Section {
+                    Button(action: {
+                        onPhotoSelected(nil)
+                        dismiss()
+                    }) {
+                        VStack(alignment: .leading) {
+                            Text("Kullanma")
+                                .font(.headline)
+                                .tint(.red)
                         }
                     }
                 }
