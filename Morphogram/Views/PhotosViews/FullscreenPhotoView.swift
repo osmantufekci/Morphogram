@@ -79,9 +79,6 @@ struct FullscreenPhotoView: View {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.title2)
                                 .foregroundColor(.white)
-                            Text("Paylaş")
-                                .font(.caption)
-                                .foregroundColor(.white)
                         }
                     }
                     
@@ -100,9 +97,6 @@ struct FullscreenPhotoView: View {
                             Image(systemName: "trash")
                                 .font(.title2)
                                 .foregroundColor(.red)
-                            Text("Sil")
-                                .font(.caption)
-                                .foregroundColor(.red)
                         }
                     }
                 }
@@ -117,6 +111,7 @@ struct FullscreenPhotoView: View {
                 )
             )
         }
+        .padding()
         .background(.black)
         .confirmationDialog("Bu fotoğrafı silmek istediğinizden emin misiniz?",
                           isPresented: $showDeleteConfirmation,
