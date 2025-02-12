@@ -10,15 +10,22 @@ import SwiftUI
 import SwiftData
 
 struct CameraView: View {
-    @Binding var referencePhoto: ProjectPhoto?
-    let onPhotoTaken: (UIImage) -> Void
+    let project: Project
     
     @StateObject private var cameraManager = CameraManager()
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var capturedImage: UIImage?
     @State private var showingPreview = false
+    @State private var showingReferencePhotoSelection = false
+    @State private var selectedReferencePhoto: ProjectPhoto?
+    
+    init(project: Project) {
+        self.project = project
+        _selectedReferencePhoto = State(initialValue: project.photos.sorted(by: { $0.createdAt > $1.createdAt }).first)
+    }
     
     var body: some View {
         ZStack {
@@ -42,9 +49,10 @@ struct CameraView: View {
                         }
                         
                         Button(action: {
-                            // Fotoğrafı kabul et
+                            // Fotoğrafı kaydet
                             if let finalImage = capturedImage {
-                                onPhotoTaken(finalImage)
+                                savePhoto(image: finalImage)
+                                dismiss()
                             }
                         }) {
                             Image(systemName: "checkmark.circle.fill")
@@ -59,7 +67,7 @@ struct CameraView: View {
                 // Kamera önizleme
                 CameraPreview(session: cameraManager.session)
                 
-                if let referencePhoto = referencePhoto,
+                if let referencePhoto = selectedReferencePhoto,
                    let fileName = referencePhoto.fileName,
                    let image = ImageManager.shared.loadImage(fileName: fileName) {
                     ReferencePhotoOverlay(image: image)
@@ -71,17 +79,27 @@ struct CameraView: View {
                         Button(action: {
                             dismiss()
                         }) {
-                            Image(systemName: "xmark")
-                                .font(.title2)
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title)
                                 .foregroundColor(.white)
-                                .padding()
-                                .background(Color.black.opacity(0.5))
-                                .clipShape(Circle())
                         }
-                        .padding()
                         
                         Spacer()
+                        
+                        if !project.photos.isEmpty {
+                            Button(action: {
+                                showingReferencePhotoSelection = true
+                            }) {
+                                Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.black.opacity(0.5))
+                                    .clipShape(Circle())
+                            }
+                        }
                     }
+                    .padding()
                     
                     Spacer()
                     
@@ -116,10 +134,40 @@ struct CameraView: View {
         .onDisappear {
             cameraManager.stop()
         }
+        .sheet(isPresented: $showingReferencePhotoSelection) {
+            SelectReferencePhotoView(project: project) { photo in
+                selectedReferencePhoto = photo
+            }
+        }
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }
         } message: {
             Text(errorMessage)
+        }
+    }
+    
+    private func savePhoto(image: UIImage) {
+        let photo = ProjectPhoto()
+        let fileName = ImageManager.shared.generateFileName(forProject: project.id)
+        
+        if ImageManager.shared.saveImage(image, withFileName: fileName) {
+            photo.fileName = fileName
+            photo.project = project
+            project.photos.append(photo)
+            project.lastPhotoDate = Date()
+            modelContext.insert(photo)
+            
+            do {
+                try modelContext.save()
+                print("Fotoğraf başarıyla kaydedildi")
+                
+                // Bir sonraki bildirimi planla
+                if project.notificationsEnabled && project.trackingFrequency != .flexible {
+                    NotificationManager.shared.scheduleNotification(for: project)
+                }
+            } catch {
+                print("Fotoğraf kaydedilirken hata oluştu: \(error)")
+            }
         }
     }
 }

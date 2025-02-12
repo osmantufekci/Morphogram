@@ -6,6 +6,7 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     @Published var error: CameraError?
     @Published var session = AVCaptureSession()
     @Published var output = AVCapturePhotoOutput()
+    private var isConfigured = false
     
     private var photoCompletion: ((Result<UIImage, Error>) -> Void)?
     
@@ -31,14 +32,16 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     
     override init() {
         super.init()
-        setupCamera()
     }
     
     func setupCamera() {
+        guard !isConfigured else { return }
+        
         session.beginConfiguration()
         
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             error = .cameraUnavailable
+            session.commitConfiguration()
             return
         }
         
@@ -48,10 +51,12 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
                 session.addInput(input)
             } else {
                 error = .cannotAddInput
+                session.commitConfiguration()
                 return
             }
         } catch {
             self.error = .cannotAddInput
+            session.commitConfiguration()
             return
         }
         
@@ -59,24 +64,28 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
             session.addOutput(output)
         } else {
             error = .cannotAddOutput
+            session.commitConfiguration()
             return
         }
         
         session.commitConfiguration()
+        isConfigured = true
     }
     
     func start() {
-        if !session.isRunning {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.session.startRunning()
-            }
+        guard !session.isRunning else { return }
+        
+        setupCamera()
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.session.startRunning()
         }
     }
     
     func stop() {
-        if session.isRunning {
-            session.stopRunning()
-        }
+        guard session.isRunning else { return }
+        
+        session.stopRunning()
     }
     
     func takePhoto(completion: @escaping (Result<UIImage, Error>) -> Void) {

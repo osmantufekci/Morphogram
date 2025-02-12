@@ -12,10 +12,8 @@ struct AddPhotoView: View {
     @Environment(\.dismiss) var dismiss
     @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
     @State private var selectedProject: Project?
-    @State private var selectedPhoto: ProjectPhoto?
     @State private var showingImagePicker = false
     @State private var showingCamera = false
-    @State private var showingSourceSelection = false
     
     var body: some View {
         NavigationView {
@@ -24,7 +22,6 @@ struct AddPhotoView: View {
                     ForEach(allProjects) { project in
                         Button(action: {
                             selectedProject = project
-                            selectedPhoto = nil
                         }) {
                             HStack {
                                 Text(project.name)
@@ -41,12 +38,7 @@ struct AddPhotoView: View {
                 if selectedProject != nil {
                     Section("Kaynak Seçimi") {
                         Button(action: {
-                            if let photo = selectedProject?.photos.last {
-                                selectedPhoto = photo
-                                showingSourceSelection = true
-                            } else {
-                                showingCamera = true
-                            }
+                            showingCamera = true
                         }) {
                             HStack {
                                 Image(systemName: "camera.fill")
@@ -69,14 +61,6 @@ struct AddPhotoView: View {
             .navigationBarItems(leading: Button("İptal") {
                 dismiss()
             })
-            .sheet(isPresented: $showingSourceSelection) {
-                if let project = selectedProject {
-                    SelectReferencePhotoView(project: project) { photo in
-                        selectedPhoto = photo
-                        showingCamera = true
-                    }
-                }
-            }
             .sheet(isPresented: $showingImagePicker) {
                 if let project = selectedProject {
                     ImagePicker { image in
@@ -88,11 +72,8 @@ struct AddPhotoView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingCamera) {
-                CameraView(referencePhoto: $selectedPhoto) { newImage in
-                    if let project = selectedProject {
-                        savePhoto(image: newImage, project: project)
-                    }
-                    dismiss()
+                if let project = selectedProject {
+                    CameraView(project: project)
                 }
             }
         }
