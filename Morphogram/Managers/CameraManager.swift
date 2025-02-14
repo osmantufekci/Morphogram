@@ -7,6 +7,7 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     @Published var session = AVCaptureSession()
     @Published var output = AVCapturePhotoOutput()
     private var isConfigured = false
+    private var currentPosition: AVCaptureDevice.Position = .back
     
     private var photoCompletion: ((Result<UIImage, Error>) -> Void)?
     
@@ -39,7 +40,7 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
         
         session.beginConfiguration()
         
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: currentPosition) else {
             error = .cameraUnavailable
             session.commitConfiguration()
             return
@@ -94,6 +95,42 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
         output.capturePhoto(with: settings, delegate: self)
     }
     
+    func switchCamera() {
+        session.beginConfiguration()
+        
+        // Mevcut kamera girişini kaldır
+        session.inputs.forEach { input in
+            session.removeInput(input)
+        }
+        
+        // Yeni kamera pozisyonunu belirle
+        currentPosition = currentPosition == .back ? .front : .back
+        
+        // Yeni kamera cihazını al
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: currentPosition) else {
+            error = .cameraUnavailable
+            session.commitConfiguration()
+            return
+        }
+        
+        do {
+            let input = try AVCaptureDeviceInput(device: device)
+            if session.canAddInput(input) {
+                session.addInput(input)
+            } else {
+                error = .cannotAddInput
+                session.commitConfiguration()
+                return
+            }
+        } catch {
+            self.error = .cannotAddInput
+            session.commitConfiguration()
+            return
+        }
+        
+        session.commitConfiguration()
+    }
+    
     // MARK: - AVCapturePhotoCaptureDelegate
     
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
@@ -146,23 +183,23 @@ struct ReferencePhotoOverlay: View {
     
     var body: some View {
         if let image {
-            ZStack {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .opacity(min(max(sliderValue, 0.2), 0.6))
+            ZStack(alignment: .bottomTrailing) {
+                VStack {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
+                .frame(maxWidth: .infinity)
+                .opacity(min(max(sliderValue, 0.2), 0.6))
                 
                 VStack {
                     Spacer()
-                    HStack {
-                        Spacer()
-                        Slider(value: $sliderValue, in: 0...1)
-                            .frame(width: 100)
-                            .tint(.white)
-                            .padding(.trailing, 20)
-                    }
-                    .padding(.bottom)
+                    Slider(value: $sliderValue, in: 0...1)
+                        .frame(maxWidth: 100, maxHeight: 50)
+                        .tint(.white)
+                        .padding(.horizontal)
                 }
+                .frame(maxWidth: .infinity, maxHeight: 100, alignment: .trailing)
             }
         }
     }

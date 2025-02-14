@@ -28,7 +28,7 @@ struct CameraView: View {
     }
     
     var body: some View {
-        ZStack {
+        VStack(spacing: 0) {
             if showingPreview, let image = capturedImage {
                 // Fotoğraf önizleme ekranı
                 VStack {
@@ -64,47 +64,50 @@ struct CameraView: View {
                 }
                 .background(Color.black)
             } else {
-                // Kamera önizleme
-                CameraPreview(session: cameraManager.session)
-                
-                if let referencePhoto = selectedReferencePhoto,
-                   let fileName = referencePhoto.fileName,
-                   let image = ImageManager.shared.loadImage(fileName: fileName) {
-                    ReferencePhotoOverlay(image: image)
-                }
-                
-                // Kontroller
-                VStack {
-                    HStack {
-                        Button(action: {
-                            dismiss()
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title)
-                                .foregroundColor(.white)
+                // Kamera önizleme ve kontroller
+                VStack(spacing: 0) {
+                    ZStack {
+                        // Kamera önizleme
+                        CameraPreview(session: cameraManager.session)
+                        
+                        if let referencePhoto = selectedReferencePhoto,
+                           let fileName = referencePhoto.fileName,
+                           let image = ImageManager.shared.loadImage(fileName: fileName) {
+                            ReferencePhotoOverlay(image: image)
                         }
                         
-                        Spacer()
-                        
-                        if !project.photos.isEmpty {
-                            Button(action: {
-                                showingReferencePhotoSelection = true
-                            }) {
-                                Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.white)
-                                    .padding(4)
-                                    .background(Color.black.opacity(0.5))
-                                    .clipShape(Circle())
+                        // Üst kontroller
+                        VStack {
+                            HStack {
+                                Button(action: {
+                                    dismiss()
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title)
+                                        .foregroundColor(.white)
+                                }
+                                
+                                Spacer()
                             }
+                            .padding()
+                            
+                            Spacer()
                         }
                     }
-                    .padding()
                     
-                    Spacer()
-                    
-                    HStack {
-                        Spacer()
+                    // Alt kamera kontrolleri
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            showingReferencePhotoSelection = true
+                        }) {
+                            Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .shadow(radius: 4)
+                        }
+                        .opacity(project.photos.isEmpty ? 0 : 1)
+                        .disabled(project.photos.isEmpty ? true : false)
+
                         Button(action: {
                             cameraManager.takePhoto { result in
                                 switch result {
@@ -118,13 +121,23 @@ struct CameraView: View {
                             }
                         }) {
                             Image(systemName: "camera.circle.fill")
-                                .font(.system(size: 64))
+                                .font(.system(size: 54))
                                 .foregroundColor(.white)
                                 .shadow(radius: 4)
                         }
-                        .padding(.bottom, 25)
-                        Spacer()
+                        
+                        Button(action: {
+                            cameraManager.switchCamera()
+                        }) {
+                            Image(systemName: "camera.rotate.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .shadow(radius: 4)
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: 65)
+                    .background(.black)
+                    .padding(.horizontal)
                 }
             }
         }
