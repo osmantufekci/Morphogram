@@ -8,6 +8,29 @@
 
 import SwiftUI
 import SwiftData
+import AVFoundation
+
+enum FlashMode {
+    case auto
+    case on
+    case off
+    
+    var systemImageName: String {
+        switch self {
+        case .auto: return "bolt.badge.a"
+        case .on: return "bolt.fill"
+        case .off: return "bolt.slash"
+        }
+    }
+    
+    var captureFlashMode: AVCaptureDevice.FlashMode {
+        switch self {
+        case .auto: return .auto
+        case .on: return .on
+        case .off: return .off
+        }
+    }
+}
 
 struct CameraView: View {
     let project: Project
@@ -22,6 +45,7 @@ struct CameraView: View {
     @State private var showingReferencePhotoSelection = false
     @State private var selectedReferencePhoto: ProjectPhoto?
     @State private var selectedGuide: GuideType = .none
+    @State private var flashMode: FlashMode = .auto
     
     init(project: Project) {
         self.project = project
@@ -152,6 +176,22 @@ struct CameraView: View {
                         }
                         
                         Button(action: {
+                            switch flashMode {
+                            case .auto:
+                                flashMode = .on
+                            case .on:
+                                flashMode = .off
+                            case .off:
+                                flashMode = .auto
+                            }
+                        }) {
+                            Image(systemName: flashMode.systemImageName)
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .shadow(radius: 4)
+                        }
+                        
+                        Button(action: {
                             cameraManager.switchCamera()
                         }) {
                             Image(systemName: "camera.rotate.fill")
@@ -177,6 +217,9 @@ struct CameraView: View {
             SelectReferencePhotoView(project: project) { photo in
                 selectedReferencePhoto = photo
             }
+        }
+        .onChange(of: flashMode) { _, newValue in
+            cameraManager.setFlashMode(newValue.captureFlashMode)
         }
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }

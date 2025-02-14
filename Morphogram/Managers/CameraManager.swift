@@ -8,6 +8,7 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     @Published var output = AVCapturePhotoOutput()
     private var isConfigured = false
     private var currentPosition: AVCaptureDevice.Position = .back
+    private var currentDevice: AVCaptureDevice?
     
     private var photoCompletion: ((Result<UIImage, Error>) -> Void)?
     
@@ -16,6 +17,7 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
         case cannotAddInput
         case cannotAddOutput
         case photoCaptureFailed
+        case flashUnavailable
         
         var errorDescription: String? {
             switch self {
@@ -27,12 +29,33 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
                 return "Kamera çıkışı eklenemedi"
             case .photoCaptureFailed:
                 return "Fotoğraf çekilemedi"
+            case .flashUnavailable:
+                return "Flash kullanılamıyor"
             }
         }
     }
     
     override init() {
         super.init()
+    }
+    
+    func setFlashMode(_ mode: AVCaptureDevice.FlashMode) {
+        guard let device = currentDevice,
+              device.hasFlash,
+              device.isFlashAvailable else {
+            error = .flashUnavailable
+            return
+        }
+        
+        do {
+            try device.lockForConfiguration()
+            if device.isFlashModeSupported(mode) {
+                device.flashMode = mode
+            }
+            device.unlockForConfiguration()
+        } catch {
+            print("Flash modu ayarlanamadı: \(error.localizedDescription)")
+        }
     }
     
     func setupCamera() {
@@ -45,6 +68,8 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
             session.commitConfiguration()
             return
         }
+        
+        currentDevice = device
         
         do {
             let input = try AVCaptureDeviceInput(device: device)
@@ -92,6 +117,11 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     func takePhoto(completion: @escaping (Result<UIImage, Error>) -> Void) {
         photoCompletion = completion
         let settings = AVCapturePhotoSettings()
+        
+        if let device = currentDevice, device.hasFlash {
+            settings.flashMode = device.flashMode
+        }
+        
         output.capturePhoto(with: settings, delegate: self)
     }
     
