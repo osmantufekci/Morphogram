@@ -46,6 +46,8 @@ struct CameraView: View {
     @State private var selectedReferencePhoto: ProjectPhoto?
     @State private var selectedGuide: GuideType = .none
     @State private var flashMode: FlashMode = .auto
+    @State private var isScreenFlashActive = false
+    @State private var originalBrightness: CGFloat = UIScreen.main.brightness
     
     init(project: Project) {
         self.project = project
@@ -68,6 +70,7 @@ struct CameraView: View {
                             // Fotoğrafı reddet ve kameraya geri dön
                             showingPreview = false
                             capturedImage = nil
+                            UIScreen.main.brightness = originalBrightness
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 64))
@@ -78,6 +81,10 @@ struct CameraView: View {
                             // Fotoğrafı kaydet
                             if let finalImage = capturedImage {
                                 savePhoto(image: finalImage)
+                                withAnimation {
+                                    UIScreen.main.brightness = originalBrightness
+                                }
+                                
                                 dismiss()
                             }
                         }) {
@@ -103,6 +110,14 @@ struct CameraView: View {
                         }
                         
                         GuideOverlay(guideType: selectedGuide)
+                        
+                        // Ekran flash efekti
+                        if isScreenFlashActive {
+                            Rectangle()
+                                .fill(Color.white)
+                                .edgesIgnoringSafeArea(.all)
+                                .transition(.opacity)
+                        }
                         
                         // Üst kontroller
                         VStack {
@@ -156,9 +171,24 @@ struct CameraView: View {
                         .opacity(project.photos.isEmpty ? 0 : 1)
                         .disabled(project.photos.isEmpty ? true : false)
                         
-                        
                         Button(action: {
+                            if cameraManager.currentPosition == .front && flashMode != .off {
+                                withAnimation {
+                                    isScreenFlashActive = true
+                                    originalBrightness = UIScreen.main.brightness
+                                    UIScreen.main.brightness = 1.0
+                                }
+                            }
+                            
                             cameraManager.takePhoto { result in
+                                if cameraManager.currentPosition == .front {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                        withAnimation {
+                                            isScreenFlashActive = false
+                                        }
+                                    }
+                                }
+                                
                                 switch result {
                                 case .success(let image):
                                     capturedImage = image
@@ -166,6 +196,7 @@ struct CameraView: View {
                                 case .failure(let error):
                                     errorMessage = error.localizedDescription
                                     showingError = true
+                                    UIScreen.main.brightness = originalBrightness
                                 }
                             }
                         }) {
@@ -212,6 +243,7 @@ struct CameraView: View {
         }
         .onDisappear {
             cameraManager.stop()
+            UIScreen.main.brightness = originalBrightness
         }
         .sheet(isPresented: $showingReferencePhotoSelection) {
             SelectReferencePhotoView(project: project) { photo in
@@ -219,7 +251,15 @@ struct CameraView: View {
             }
         }
         .onChange(of: flashMode) { _, newValue in
-            cameraManager.setFlashMode(newValue.captureFlashMode)
+            if cameraManager.currentPosition == .back {
+                cameraManager.setFlashMode(newValue.captureFlashMode)
+            }
+        }
+        .onChange(of: cameraManager.currentPosition) { _, newPosition in
+            // Ön kameraya geçildiğinde flash modunu otomatiğe al
+            if newPosition == .front {
+                flashMode = .auto
+            }
         }
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }

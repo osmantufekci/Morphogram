@@ -6,8 +6,8 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     @Published var error: CameraError?
     @Published var session = AVCaptureSession()
     @Published var output = AVCapturePhotoOutput()
+    @Published var currentPosition: AVCaptureDevice.Position = .back
     private var isConfigured = false
-    private var currentPosition: AVCaptureDevice.Position = .back
     private var currentDevice: AVCaptureDevice?
     
     private var photoCompletion: ((Result<UIImage, Error>) -> Void)?
