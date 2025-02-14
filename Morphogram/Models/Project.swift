@@ -60,8 +60,9 @@ final class Project {
     var trackingFrequency: TrackingFrequency
     var notificationsEnabled: Bool
     var calendarEnabled: Bool
+    var guideType: GuideType?
     
-    init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true, calendarEnabled: Bool = false) {
+    init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true, calendarEnabled: Bool = false, guideType: GuideType? = nil) {
         self.id = UUID().uuidString
         self.name = name
         self.createdAt = Date()
@@ -70,5 +71,6 @@ final class Project {
         self.trackingFrequency = trackingFrequency
         self.notificationsEnabled = notificationsEnabled
         self.calendarEnabled = calendarEnabled
+        self.guideType = guideType
     }
 }

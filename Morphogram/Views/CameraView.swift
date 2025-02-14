@@ -21,10 +21,12 @@ struct CameraView: View {
     @State private var showingPreview = false
     @State private var showingReferencePhotoSelection = false
     @State private var selectedReferencePhoto: ProjectPhoto?
+    @State private var selectedGuide: GuideType = .none
     
     init(project: Project) {
         self.project = project
         _selectedReferencePhoto = State(initialValue: project.photos.sorted(by: { $0.createdAt > $1.createdAt }).first)
+        _selectedGuide =  State(initialValue: project.guideType ?? .none)
     }
     
     var body: some View {
@@ -76,6 +78,8 @@ struct CameraView: View {
                             ReferencePhotoOverlay(image: image)
                         }
                         
+                        GuideOverlay(guideType: selectedGuide)
+                        
                         // Üst kontroller
                         VStack {
                             HStack {
@@ -97,6 +101,26 @@ struct CameraView: View {
                     
                     // Alt kamera kontrolleri
                     HStack(spacing: 20) {
+                        Menu {
+                            Button("3x3") {
+                                selectedGuide = .grid3x3
+                            }
+                            Button("5x5") {
+                                selectedGuide = .grid5x5
+                            }
+                            Button("Oval") {
+                                selectedGuide = .oval
+                            }
+                            Button("None") {
+                                selectedGuide = .none
+                            }
+                        } label: {
+                            Image(systemName: selectedGuide == .none ? "grid.circle" : "grid.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .shadow(radius: 4)
+                        }
+                        
                         Button(action: {
                             showingReferencePhotoSelection = true
                         }) {
@@ -107,7 +131,8 @@ struct CameraView: View {
                         }
                         .opacity(project.photos.isEmpty ? 0 : 1)
                         .disabled(project.photos.isEmpty ? true : false)
-
+                        
+                        
                         Button(action: {
                             cameraManager.takePhoto { result in
                                 switch result {
@@ -169,6 +194,7 @@ struct CameraView: View {
             photo.project = project
             project.photos.append(photo)
             project.lastPhotoDate = Date()
+            project.guideType = selectedGuide
             modelContext.insert(photo)
             
             do {

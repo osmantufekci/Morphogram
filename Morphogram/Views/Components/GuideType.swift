@@ -9,7 +9,7 @@
 import SwiftUI
 import SwiftData
 
-enum GuideType {
+enum GuideType: Codable {
     case none
     case grid3x3
     case grid5x5
@@ -44,7 +44,7 @@ struct Grid3x3Guide: View {
                         path.move(to: CGPoint(x: x, y: 0))
                         path.addLine(to: CGPoint(x: x, y: geometry.size.height))
                     }
-                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(1), lineWidth: 0.5)
                 }
                 
                 // Yatay çizgiler
@@ -54,7 +54,7 @@ struct Grid3x3Guide: View {
                         path.move(to: CGPoint(x: 0, y: y))
                         path.addLine(to: CGPoint(x: geometry.size.width, y: y))
                     }
-                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(1), lineWidth: 0.5)
                 }
             }
         }
@@ -72,7 +72,7 @@ struct Grid5x5Guide: View {
                         path.move(to: CGPoint(x: x, y: 0))
                         path.addLine(to: CGPoint(x: x, y: geometry.size.height))
                     }
-                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(1), lineWidth: 0.5)
                 }
                 
                 // Yatay çizgiler
@@ -82,7 +82,7 @@ struct Grid5x5Guide: View {
                         path.move(to: CGPoint(x: 0, y: y))
                         path.addLine(to: CGPoint(x: geometry.size.width, y: y))
                     }
-                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(1), lineWidth: 0.5)
                 }
             }
         }
