@@ -140,9 +140,15 @@ class CameraManager: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
         }
         
         guard let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData) else {
+              var image = UIImage(data: imageData) else {
             photoCompletion?(.failure(CameraError.photoCaptureFailed))
             return
+        }
+        
+        // Ön kamera için aynalama düzeltmesi
+        if currentPosition == .front,
+           let cgImage = image.cgImage {
+            image = UIImage(cgImage: cgImage, scale: image.scale, orientation: .leftMirrored)
         }
         
         photoCompletion?(.success(image))
