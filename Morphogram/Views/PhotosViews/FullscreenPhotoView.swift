@@ -30,7 +30,6 @@ struct FullscreenPhotoView: View {
                 photos: photos,
                 currentIndex: $currentIndex
             )
-            .background(Color.black)
             
             // Alt kontrol alanı
             VStack(spacing: 15) {
@@ -43,14 +42,12 @@ struct FullscreenPhotoView: View {
                         VStack(spacing: 5) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.title2)
-                                .foregroundColor(.white)
                         }
                     }
                     
                     Spacer()
                     
                     Text("\(currentIndex + 1) / \(photos.count)")
-                        .foregroundColor(.white)
                         .font(.callout)
                     
                     Spacer()
@@ -68,26 +65,22 @@ struct FullscreenPhotoView: View {
                 .padding(.horizontal)
                 .padding(.top, 10)
             }
-            .background(.black)
+            .padding()
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack {
-                    VStack(spacing: 4) {
-                        if let project = photos[currentIndex].project {
-                            Text(project.name)
-                                .font(.headline)
-                                .foregroundColor(.white)
-                        }
-                        Text(formatDate(photos[currentIndex].createdAt))
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
+                VStack(spacing: 4) {
+                    if let project = photos[currentIndex].project {
+                        Text(project.name)
+                            .font(.headline)
                     }
+                    Text(formatDate(photos[currentIndex].createdAt))
+                        .font(.subheadline)
                 }
             }
         }
-        .padding()
-        .background(.black)
+        .toolbarBackground(.black, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Bu fotoğrafı silmek istediğinizden emin misiniz?",
                           isPresented: $showDeleteConfirmation,
                           titleVisibility: .visible) {

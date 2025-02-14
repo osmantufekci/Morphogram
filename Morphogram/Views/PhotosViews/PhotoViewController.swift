@@ -39,7 +39,7 @@ class PhotoViewController: UIViewController {
     
     private func setupImageView() {
         imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFit
+        imageView.contentMode = .scaleAspectFill
         scrollView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
