@@ -16,70 +16,67 @@ struct AddPhotoView: View {
     @State private var showingCamera = false
     
     var body: some View {
-        NavigationView {
-            List {
-                Section("Proje Seçimi") {
-                    ForEach(allProjects) { project in
-                        Button(action: {
-                            selectedProject = project
-                        }) {
-                            HStack {
-                                Text(project.name)
-                                if project == selectedProject {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
-                                }
-                                Spacer()
-                                Text("Son: " + formatDate(project.lastPhotoDate))
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+        
+        List {
+            Section("Proje Seçimi") {
+                ForEach(allProjects) { project in
+                    Button(action: {
+                        selectedProject = project
+                    }) {
+                        HStack {
+                            Text(project.name)
+                            if project == selectedProject {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
                             }
-                        }
-                    }
-                }
-                
-                if selectedProject != nil {
-                    Section("Kaynak Seçimi") {
-                        Button(action: {
-                            showingCamera = true
-                        }) {
-                            HStack {
-                                Image(systemName: "camera.fill")
-                                Text("Kameradan Çek")
-                            }
-                        }
-                        
-                        Button(action: {
-                            showingImagePicker = true
-                        }) {
-                            HStack {
-                                Image(systemName: "photo.fill")
-                                Text("Galeriden Seç")
-                            }
+                            Spacer()
+                            Text("Son: " + formatDate(project.lastPhotoDate))
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                     }
                 }
             }
-            .navigationTitle("Fotoğraf Ekle")
-            .navigationBarItems(leading: Button("İptal") {
-                dismiss()
-            })
-            .sheet(isPresented: $showingImagePicker) {
-                if let project = selectedProject {
-                    ImagePicker { image in
-                        if let image = image {
-                            savePhoto(image: image, project: project)
+            
+            if selectedProject != nil {
+                Section("Kaynak Seçimi") {
+                    Button(action: {
+                        showingCamera = true
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                            Text("Kameradan Çek")
                         }
+                    }
+                    
+                    Button(action: {
+                        showingImagePicker = true
+                    }) {
+                        HStack {
+                            Image(systemName: "photo.fill")
+                            Text("Galeriden Seç")
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Fotoğraf Ekle")
+        .sheet(isPresented: $showingImagePicker) {
+            if let project = selectedProject {
+                ImagePicker { image in
+                    if let image = image {
+                        savePhoto(image: image, project: project)
                         dismiss()
                     }
                 }
             }
-            .fullScreenCover(isPresented: $showingCamera) {
-                if let project = selectedProject {
-                    CameraView(project: project)
-                }
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            if let project = selectedProject {
+                CameraView(project: project)
             }
         }
+        
     }
     
     private func savePhoto(image: UIImage, project: Project) {

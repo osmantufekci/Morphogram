@@ -9,7 +9,7 @@ import SwiftData
 import Foundation
 
 @Model
-class Project {
+final class Project {
     enum TrackingFrequency: Codable, Equatable, Hashable, CaseIterable {
         case daily
         case weekly

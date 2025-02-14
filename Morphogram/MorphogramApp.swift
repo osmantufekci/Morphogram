@@ -11,6 +11,7 @@ import SwiftData
 @main
 struct MorphogramApp: App {
     let container: ModelContainer
+    @StateObject private var navigationManager = NavigationManager.shared
     
     init() {
         do {
@@ -41,8 +42,18 @@ struct MorphogramApp: App {
     
     var body: some Scene {
         WindowGroup {
-            Dashboard()
+            NavigationStack(path: $navigationManager.path) {
+                Dashboard()
+                    .navigationDestination(for: NavigationView<AnyView>.self) { page in
+                        page
+                    }
+            }
         }
+        .environmentObject(navigationManager)
         .modelContainer(container)
     }
+}
+
+#Preview {
+    Dashboard()
 }

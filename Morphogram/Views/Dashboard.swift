@@ -2,22 +2,19 @@ import SwiftUI
 import SwiftData
 
 struct Dashboard: View {
+    
+    @EnvironmentObject var router: NavigationManager
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
     
-    @State private var projectToEdit: Project?
-    @State private var showingAddProject = false
-    @State private var showingAddPhoto = false
-    
     var body: some View {
-        NavigationView {
             ZStack {
                 VStack {
                     if allProjects.isEmpty {
                         Text("Hiç proje oluşturulmadı.")
                             .font(.title)
                         Button("Yeni Proje Ekle") {
-                            showingAddProject = true
+                            router.navigate(AddProjectView())
                         }
                         .buttonStyle(.bordered)
                         Spacer()
@@ -25,7 +22,7 @@ struct Dashboard: View {
                         HStack {
                             Spacer()
                             Button(action: {
-                                showingAddProject = true
+                                router.navigate(AddProjectView())
                             }) {
                                 Label("Yeni Proje", systemImage: "plus")
                             }
@@ -34,22 +31,29 @@ struct Dashboard: View {
                         .padding(.horizontal)
                         
                         List(allProjects) { project in
-                            ProjectCard(project: project)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button {
-                                        projectToEdit = project
-                                    } label: {
-                                        Label("Ayarlar", systemImage: "gear")
-                                    }
-                                    .tint(.blue)
-                                    
-                                    Button(role: .destructive) {
-                                        deleteProject(project)
-                                    } label: {
-                                        Label("Sil", systemImage: "trash")
-                                    }
+                            Button {
+                                router.navigate(
+                                    ProjectPhotosGridView(project: project)
+                                        .environmentObject(router)
+                                )
+                            } label: {
+                                ProjectCard(project: project)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    router.navigate(AddProjectView(project: project))
+                                } label: {
+                                    Label("Ayarlar", systemImage: "gear")
                                 }
-                                .listRowSeparator(.hidden)
+                                .tint(.blue)
+                                
+                                Button(role: .destructive) {
+                                    deleteProject(project)
+                                } label: {
+                                    Label("Sil", systemImage: "trash")
+                                }
+                            }
+                            .listRowSeparator(.hidden)
                         }
                         .listStyle(.plain)
                     }
@@ -60,7 +64,7 @@ struct Dashboard: View {
                     HStack {
                         Spacer()
                         Button(action: {
-                            showingAddPhoto = true
+                            router.navigate(AddPhotoView())
                         }) {
                             Image(systemName: "plus")
                                 .font(.title2)
@@ -78,17 +82,7 @@ struct Dashboard: View {
                 }
             }
             .navigationTitle("Morphogram")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .sheet(item: $projectToEdit) { project in
-            AddProjectView(project: project)
-        }
-        .sheet(isPresented: $showingAddProject) {
-            AddProjectView()
-        }
-        .sheet(isPresented: $showingAddPhoto) {
-            AddPhotoView()
-        }
+            .navigationBarTitleDisplayMode(.automatic)
     }
 }
 
@@ -118,7 +112,7 @@ extension Dashboard {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: Project.self, ProjectPhoto.self, configurations: config)
-    
     return Dashboard()
         .modelContainer(container)
+        .environmentObject(NavigationManager.shared)
 }

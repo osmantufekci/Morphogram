@@ -11,12 +11,13 @@ import SwiftData
 struct ProjectPhotosGridView: View {
     let project: Project
     @State private var selectedPhotoIndex: Int?
-    @State private var isFullscreenPresented = false
     @State private var showCamera = false
     @State private var isEditing = false
     @State private var itemSize: CGSize = .zero
     private static let initialGridCount = 3
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var router: NavigationManager
+    @Namespace private var zoomTransition
     
     @State var columns: [GridItem] = Array(repeating: GridItem(.flexible()), count: initialGridCount)
     
@@ -24,7 +25,7 @@ struct ProjectPhotosGridView: View {
         VStack {
             if isEditing {
                 ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
-                .padding()
+                    .padding()
             }
             ScrollView {
                 LazyVGrid(columns: columns) {
@@ -44,13 +45,26 @@ struct ProjectPhotosGridView: View {
                         }
                     }
                     
-                    ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) { index, photo in
+                    ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) {
+                        index,
+                        photo in
                         GeometryReader { geo in
                             if let fileName = photo.fileName {
                                 ZStack(alignment: .topTrailing) {
                                     AsyncImageView(fileName: fileName)
                                         .frame(width: geo.size.width, height: geo.size.width)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .onTapGesture {
+                                            router.navigate(
+                                                FullscreenPhotoView(
+                                                    photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
+                                                    initialIndex: index,
+                                                    onDelete: { photo in
+                                                        deletePhoto(photo)
+                                                    }
+                                                ).environmentObject(router)
+                                            )
+                                        }
                                 }
                                 .onAppear {
                                     itemSize = geo.size
@@ -60,8 +74,22 @@ struct ProjectPhotosGridView: View {
                                 }
                                 .contextMenu {
                                     Button {
-                                        selectedPhotoIndex = index
-                                        isFullscreenPresented = true
+                                        router.navigate(
+                                            FullscreenPhotoView(
+                                                photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
+                                                initialIndex: index,
+                                                onDelete: { photo in
+                                                    deletePhoto(photo)
+                                                }
+                                            )
+                                            .environmentObject(router)
+                                            .navigationTransition(
+                                                .zoom(
+                                                    sourceID: photo.id,
+                                                    in: zoomTransition
+                                                )
+                                            )
+                                        )
                                     } label: {
                                         Label("Tam Ekran Görüntüle", systemImage: "arrow.up.left.and.arrow.down.right")
                                     }
@@ -73,9 +101,16 @@ struct ProjectPhotosGridView: View {
                                     }
                                 } preview: {
                                     if let fileName = photo.fileName {
-                                        AsyncImageView(fileName: fileName)
-                                            .frame(maxWidth: 300, maxHeight: 300)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        if #available(iOS 18.0, *) {
+                                            AsyncImageView(fileName: fileName)
+                                                .frame(maxWidth: 300, maxHeight: 300)
+                                                .matchedTransitionSource(id: photo.id, in: zoomTransition)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        } else {
+                                            AsyncImageView(fileName: fileName)
+                                                .frame(maxWidth: 300, maxHeight: 300)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
                                     }
                                 }
                             }
@@ -93,7 +128,10 @@ struct ProjectPhotosGridView: View {
                         .overlay(alignment: .topTrailing, content: {
                             if isEditing {
                                 Button(action: {
-                                    deletePhoto(photo)
+                                    withAnimation {
+                                        deletePhoto(photo)
+                                        isEditing = !project.photos.isEmpty
+                                    }
                                 }) {
                                     Image(systemName: "minus.circle.fill")
                                         .font(.title2)
@@ -104,12 +142,6 @@ struct ProjectPhotosGridView: View {
                                 .offset(x: 7, y: -7)
                             }
                         })
-                        .onTapGesture {
-                            if !isEditing {
-                                selectedPhotoIndex = index
-                                isFullscreenPresented = true
-                            }
-                        }
                         .wiggle(isActive: isEditing)
                     }
                 }
@@ -128,16 +160,6 @@ struct ProjectPhotosGridView: View {
                     }
                     .disabled(project.photos.isEmpty)
                 }
-            }
-            .fullScreenCover(isPresented: $isFullscreenPresented) {
-                FullscreenPhotoView(
-                    photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
-                    initialIndex: selectedPhotoIndex ?? 0,
-                    isPresented: $isFullscreenPresented,
-                    onDelete: { photo in
-                        deletePhoto(photo)
-                    }
-                )
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraView(project: project)

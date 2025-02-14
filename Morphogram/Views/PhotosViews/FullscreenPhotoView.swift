@@ -9,57 +9,22 @@ import SwiftUI
 struct FullscreenPhotoView: View {
     let photos: [ProjectPhoto]
     let initialIndex: Int
-    @Binding var isPresented: Bool
     @State private var currentIndex: Int
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
+    @EnvironmentObject private var router: NavigationManager
     
     var onDelete: ((ProjectPhoto) -> Void)?
     
-    init(photos: [ProjectPhoto], initialIndex: Int, isPresented: Binding<Bool>, onDelete: ((ProjectPhoto) -> Void)? = nil) {
+    init(photos: [ProjectPhoto], initialIndex: Int, onDelete: ((ProjectPhoto) -> Void)? = nil) {
         self.photos = photos
         self.initialIndex = initialIndex
-        self._isPresented = isPresented
         self._currentIndex = State(initialValue: initialIndex)
         self.onDelete = onDelete
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Üst bilgi alanı
-            HStack {
-                Button(action: {
-                    isPresented = false
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title)
-                        .foregroundColor(.white)
-                }
-                
-                Spacer()
-                
-                VStack(spacing: 4) {
-                    if let project = photos[currentIndex].project {
-                        Text(project.name)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                    Text(formatDate(photos[currentIndex].createdAt))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [.black.opacity(0.7), .clear]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            
             // Fotoğraf görüntüleyici
             PhotoPageViewController(
                 photos: photos,
@@ -103,13 +68,23 @@ struct FullscreenPhotoView: View {
                 .padding(.horizontal)
                 .padding(.top, 10)
             }
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .background(.black)
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack {
+                    VStack(spacing: 4) {
+                        if let project = photos[currentIndex].project {
+                            Text(project.name)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        Text(formatDate(photos[currentIndex].createdAt))
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
         }
         .padding()
         .background(.black)
@@ -119,9 +94,6 @@ struct FullscreenPhotoView: View {
             Button("Sil", role: .destructive) {
                 if currentIndex < photos.count {
                     onDelete?(photos[currentIndex])
-                    if photos.count == 1 {
-                        isPresented = false
-                    }
                 }
             }
             Button("İptal", role: .cancel) {}
