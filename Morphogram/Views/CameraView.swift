@@ -34,7 +34,7 @@ struct CameraView: View {
                 VStack {
                     Image(uiImage: image)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .aspectRatio(contentMode: .fill)
                         .frame(maxHeight: .infinity)
                     
                     HStack(spacing: 50) {
@@ -60,7 +60,7 @@ struct CameraView: View {
                                 .foregroundColor(.green)
                         }
                     }
-                    .padding(.bottom, 30)
+                    .frame(maxHeight: 65)
                 }
                 .background(Color.black)
             } else {
