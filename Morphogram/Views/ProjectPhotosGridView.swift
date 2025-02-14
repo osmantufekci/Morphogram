@@ -36,7 +36,7 @@ struct ProjectPhotosGridView: View {
                         }) {
                             VStack {
                                 Image(systemName: "camera.fill")
-                                    .frame(width: itemSize.width, height: itemSize.width)
+                                    .frame(width: project.photos.isEmpty ? 125 : itemSize.width, height: project.photos.isEmpty ? 125 : itemSize.width)
                                     .font(.system(size: 44))
                                     .foregroundColor(.accentColor)
                                     .background(Color.gray.opacity(0.2))
