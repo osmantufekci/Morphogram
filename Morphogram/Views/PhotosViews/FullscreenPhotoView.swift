@@ -30,6 +30,12 @@ struct FullscreenPhotoView: View {
                 photos: photos,
                 currentIndex: $currentIndex
             )
+            .clipShape(
+                .rect(
+                    bottomLeadingRadius: 15,
+                    bottomTrailingRadius: 15
+                )
+            )
             
             // Alt kontrol alanı
             VStack(spacing: 15) {
