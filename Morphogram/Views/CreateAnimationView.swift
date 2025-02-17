@@ -71,19 +71,19 @@ struct CreateAnimationView: View {
                 
                 if animationType == .video {
                     HStack {
-                        Text("FPS")
+                        Text("Yavaş")
                         Slider(value: $frameRate, in: 10...15, step: 0.5) { _ in
                             startPreview()
                         }
-                        Text(String(format: "%.1f", frameRate))
+                        Text("Hızlı")
                     }
                 } else {
                     HStack {
-                        Text("Kare Gecikmesi")
+                        Text("Erken")
                         Slider(value: $frameDelay, in: 0.1...2.0, step: 0.1) { _ in
                             startPreview()
                         }
-                        Text(String(format: "%.1f s", frameDelay))
+                        Text("Geç")
                     }
                 }
             }

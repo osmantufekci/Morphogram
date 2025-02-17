@@ -12,6 +12,7 @@ struct FullscreenPhotoView: View {
     @State private var currentIndex: Int
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
+    @State private var showSettings = false
     @EnvironmentObject private var router: NavigationManager
     
     var onDelete: ((ProjectPhoto) -> Void)?
@@ -37,6 +38,62 @@ struct FullscreenPhotoView: View {
                 )
             )
             
+            // Ayarlar menüsü
+            if showSettings {
+                ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 20) {
+                            Button(action: {
+                                // Flip işlemi burada yapılacak
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right.fill")
+                                        .font(.title2)
+                                    Text("Yatay Çevir")
+                                        .font(.caption)
+                                }
+                            }
+                            
+                            Button(action: {
+                                // Döndürme işlemi burada yapılacak
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "rotate.right")
+                                        .font(.title2)
+                                    Text("Döndür")
+                                        .font(.caption)
+                                }
+                            }
+                            
+                            Button(action: {
+                                // Filtreler...
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "camera.filters")
+                                        .font(.title2)
+                                    Text("Filtreler")
+                                        .font(.caption)
+                                }
+                            }
+                            
+                            Button(action: {
+                                // Kırpma işlemi burada yapılacak
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "crop")
+                                        .font(.title2)
+                                    Text("Kırp")
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    
+                }
+                .frame(height: 70)
+                .transition(.opacity)
+                .tint(.white)
+            }
+            
             // Alt kontrol alanı
             VStack(spacing: 15) {
                 HStack {
@@ -50,6 +107,19 @@ struct FullscreenPhotoView: View {
                                 .font(.title2)
                         }
                     }
+                    
+                    Button(action: {
+                        withAnimation {
+                            showSettings.toggle()
+                        }
+                    }) {
+                        VStack(spacing: 5) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.title2)
+                                .foregroundColor(showSettings ? .primary : .blue)
+                        }
+                    }
+                    .hidden()
                     
                     Spacer()
                     
@@ -98,9 +168,13 @@ struct FullscreenPhotoView: View {
             Button("İptal", role: .cancel) {}
         }
         .sheet(isPresented: $showShareSheet) {
-            if let fileName = photos[currentIndex].fileName,
-               let image = UIImage(contentsOfFile: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName).path) {
-                ShareSheet(activityItems: [image])
+            if let project = photos[currentIndex].project, let fileName = photos[currentIndex].fileName {
+                ShareSheet(
+                    activityItems: [CustomActivityItemSource(
+                        url: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName),
+                        projectName: project.name
+                    )]
+                )
             }
         }
     }
