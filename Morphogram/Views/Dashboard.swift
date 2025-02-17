@@ -70,7 +70,7 @@ struct Dashboard: View {
                                 .font(.title2)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
-                                .frame(width: 54, height: 54)
+                                .frame(width: 60, height: 60)
                                 .background(Color.blue)
                                 .clipShape(Circle())
                                 .shadow(radius: 4)

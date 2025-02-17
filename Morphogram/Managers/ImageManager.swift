@@ -11,22 +11,10 @@ final class ImageManager {
     
     private init() {
         baseDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        // Cache limitleri
-        imageCache.countLimit = 50 // Maksimum 50 tam boyutlu görüntü
-        thumbnailCache.countLimit = 100 // Maksimum 100 thumbnail
+        imageCache.countLimit = 100 // Maksimum 50 tam boyutlu görüntü
+        thumbnailCache.countLimit = 300 // Maksimum 300 thumbnail
         imageCache.totalCostLimit = 250 * 1024 * 1024 // 250 MB
-        thumbnailCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
-        printDirectoryContents()
-    }
-    
-    private func printDirectoryContents() {
-        do {
-            let contents = try fileManager.contentsOfDirectory(at: baseDirectory, includingPropertiesForKeys: nil)
-            print("Dizin içeriği (\(contents.count) dosya):")
-            contents.forEach { print("- \($0.lastPathComponent)") }
-        } catch {
-            print("Dizin içeriği okunamadı: \(error)")
-        }
+        thumbnailCache.totalCostLimit = 150 * 1024 * 1024 // 150 MB
     }
     
     func generateFileName(forProject projectId: String) -> String {
@@ -53,7 +41,6 @@ final class ImageManager {
             fileManager.createFile(atPath: fileURL.path, contents: data)
             
             print("Fotoğraf başarıyla kaydedildi (\(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)))")
-            printDirectoryContents()
             return true
         } catch {
             print("Fotoğraf kaydedilemedi: \(error)")
@@ -61,7 +48,7 @@ final class ImageManager {
         }
     }
     
-    func loadImage(fileName: String, thumbnail: Bool = false) -> UIImage? {
+    func loadImage(fileName: String, thumbnail: Bool = false, downSample: Bool = false) -> UIImage? {
         let cacheKey = (fileName + (thumbnail ? "_thumb" : "")) as NSString
         
         // Önce cache'e bak
@@ -85,7 +72,9 @@ final class ImageManager {
             let data = try Data(contentsOf: fileURL)
             guard let image = UIImage(data: data) else { return nil }
             
-            if thumbnail {
+            if downSample {
+                return downsample(imageAt: fileURL, to: CGSize(width: UIScreen.main.bounds.width * 0.95, height: 450))
+            } else if thumbnail {
                 // Thumbnail oluştur
                 let thumbnailSize = CGSize(width: 200, height: 200)
                 let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
@@ -118,14 +107,12 @@ final class ImageManager {
         
         guard fileManager.fileExists(atPath: fileURL.path) else {
             print("Silinecek fotoğraf bulunamadı: \(fileURL.path)")
-            printDirectoryContents()
             return
         }
         
         do {
             try fileManager.removeItem(at: fileURL)
             print("Fotoğraf başarıyla silindi: \(fileName)")
-            printDirectoryContents()
         } catch {
             print("Fotoğraf silinemedi: \(error)")
         }

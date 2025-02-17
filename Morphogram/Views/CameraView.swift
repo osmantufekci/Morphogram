@@ -201,7 +201,7 @@ struct CameraView: View {
                             }
                         }) {
                             Image(systemName: "camera.circle.fill")
-                                .font(.system(size: 54))
+                                .font(.system(size: 60))
                                 .foregroundColor(.white)
                                 .shadow(radius: 4)
                         }

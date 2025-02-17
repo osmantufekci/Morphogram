@@ -103,12 +103,12 @@ struct ProjectPhotosGridView: View {
                                     } preview: {
                                         if let fileName = photo.fileName {
                                             if #available(iOS 18.0, *) {
-                                                AsyncImageView(fileName: fileName)
+                                                AsyncImageView(fileName: fileName, loadFullResolution: true)
                                                     .frame(maxWidth: 300, maxHeight: 300)
                                                     .matchedTransitionSource(id: photo.id, in: zoomTransition)
                                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                             } else {
-                                                AsyncImageView(fileName: fileName)
+                                                AsyncImageView(fileName: fileName, loadFullResolution: true)
                                                     .frame(maxWidth: 300, maxHeight: 300)
                                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                             }
@@ -178,7 +178,7 @@ struct ProjectPhotosGridView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
-                            .frame(width: 54, height: 54)
+                            .frame(width: 60, height: 60)
                             .background(Color.blue)
                             .clipShape(Circle())
                             .shadow(radius: 4)

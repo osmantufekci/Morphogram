@@ -226,7 +226,7 @@ struct CreateAnimationView: View {
         previewImages = sortedPhotos.compactMap { photo -> UIImage? in
             guard let fileName = photo.fileName else { return nil }
             guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
-            return ImageManager.shared.loadImage(fileName: fileName)
+            return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
         }
         
         if !previewImages.isEmpty {
@@ -265,7 +265,7 @@ struct CreateAnimationView: View {
         let images = sortedPhotos.compactMap { photo -> UIImage? in
             guard let fileName = photo.fileName,
                   selectedPhotos.contains(fileName),
-                  let image = ImageManager.shared.loadImage(fileName: fileName) else { return nil }
+                  let image = ImageManager.shared.loadImage(fileName: fileName, downSample: animationType == .gif) else { return nil }
             return image
         }
         
