@@ -29,9 +29,15 @@ final class AnimationManager {
     }
     
     // Video oluşturma fonksiyonu
-    func createVideo(from images: [UIImage], frameRate: Float = 2.0, name: String, watermarkPosition: WatermarkPosition = .center, completion: @escaping (URL?) -> Void) {
+    func createVideo(
+        from images: [UIImage],
+        frameRate: Float = 2.0,
+        name: String,
+        watermarkPosition: WatermarkPosition = .center,
+        onProgress: ((Float) -> Void)? = nil,
+        completion: @escaping (URL?) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
-            
             guard !images.isEmpty else {
                 completion(nil)
                 return
@@ -55,10 +61,10 @@ final class AnimationManager {
             }
             
             let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
-            writerInput.expectsMediaDataInRealTime = true
+            writerInput.expectsMediaDataInRealTime = false
             
             let attributes: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32ARGB),
+                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange),
                 kCVPixelBufferWidthKey as String: videoSize.width,
                 kCVPixelBufferHeightKey as String: videoSize.height
             ]
@@ -75,81 +81,124 @@ final class AnimationManager {
             // Watermark layer'ı oluştur
             let watermarkLayer = self.createWatermarkLayer(size: videoSize, position: watermarkPosition)
             
-            // Frame'leri ekle
-            var frameCount: Int64 = 0
-            let group = DispatchGroup()
+            // Batch işleme için değişkenler
+            let batchSize = min(15, images.count)
+            let totalBatches = Int(ceil(Double(images.count) / Double(batchSize)))
+            var currentFrameIndex: Int64 = 0
+            let totalImages = Float(images.count)
+            var processedImagesCount: Float = 0
             
-            for image in images {
-                group.enter()
+            // Her batch'i sırayla işle
+            for batchIndex in 0..<totalBatches {
+                let start = batchIndex * batchSize
+                let end = min(start + batchSize, images.count)
+                let currentBatch = Array(images[start..<end])
                 
-                let renderer = UIGraphicsImageRenderer(size: videoSize)
-                let watermarkedImage = renderer.image { context in
-                    // Orijinal görüntüyü çiz
-                    image.draw(in: CGRect(origin: .zero, size: videoSize))
+                // Batch'teki görüntüleri işle
+                autoreleasepool {
+                    let group = DispatchGroup()
+                    var processedFrames: [(buffer: CVPixelBuffer, index: Int)] = []
+                    let lock = NSLock()
                     
-                    let padding: CGFloat = videoSize.width * 0.015
-                    let textSize = watermarkLayer.frame.size
-                    
-                    // Context'i kaydet
-                    context.cgContext.saveGState()
-                    
-                    // Pozisyona göre transform uygula
-                    switch watermarkPosition {
-                    case .center:
-                        // Merkeze taşı
-                        context.cgContext.translateBy(x: videoSize.width/2, y: videoSize.height/2)
-                        // Metin boyutunun yarısı kadar geri çek
-                        context.cgContext.translateBy(x: -textSize.width/2, y: -textSize.height/2)
+                    // Batch'teki her görüntüyü paralel işle
+                    for (index, image) in currentBatch.enumerated() {
+                        group.enter()
                         
-                    case .topRight:
-                        context.cgContext.translateBy(x: videoSize.width - padding - textSize.width, y: padding)
+                        autoreleasepool {
+                            let renderer = UIGraphicsImageRenderer(size: videoSize)
+                            let watermarkedImage = renderer.image { context in
+                                // Orijinal görüntüyü çiz
+                                image.draw(in: CGRect(origin: .zero, size: videoSize))
+                                
+                                let padding: CGFloat = videoSize.width * 0.015
+                                let textSize = watermarkLayer.frame.size
+                                
+                                // Context'i kaydet
+                                context.cgContext.saveGState()
+                                
+                                // Pozisyona göre transform uygula
+                                switch watermarkPosition {
+                                case .center:
+                                    context.cgContext.translateBy(x: videoSize.width/2, y: videoSize.height/2)
+                                    context.cgContext.translateBy(x: -textSize.width/2, y: -textSize.height/2)
+                                case .topRight:
+                                    context.cgContext.translateBy(x: videoSize.width - padding - textSize.width, y: padding)
+                                case .bottomRight:
+                                    context.cgContext.translateBy(x: videoSize.width - padding - textSize.width,
+                                                              y: videoSize.height - padding - textSize.height)
+                                case .topLeft:
+                                    context.cgContext.translateBy(x: padding, y: padding)
+                                case .bottomLeft:
+                                    context.cgContext.translateBy(x: padding,
+                                                              y: videoSize.height - padding - textSize.height)
+                                }
+                                
+                                // Watermark'ı çiz
+                                watermarkLayer.render(in: context.cgContext)
+                                
+                                // Context'i geri yükle
+                                context.cgContext.restoreGState()
+                            }
+                            
+                            if let buffer = watermarkedImage.pixelBuffer(size: videoSize) {
+                                lock.lock()
+                                processedFrames.append((buffer: buffer, index: index))
+                                processedImagesCount += 1
+                                
+                                // Her görsel işlendiğinde ilerlemeyi güncelle
+                                let progress = processedImagesCount / totalImages
+                                DispatchQueue.main.async {
+                                    onProgress?(progress)
+                                }
+                                lock.unlock()
+                            }
+                        }
                         
-                    case .bottomRight:
-                        context.cgContext.translateBy(x: videoSize.width - padding - textSize.width,
-                                                      y: videoSize.height - padding - textSize.height)
-                        
-                    case .topLeft:
-                        context.cgContext.translateBy(x: padding, y: padding)
-                        
-                    case .bottomLeft:
-                        context.cgContext.translateBy(x: padding,
-                                                      y: videoSize.height - padding - textSize.height)
+                        group.leave()
                     }
                     
-                    // Watermark'ı çiz
-                    watermarkLayer.render(in: context.cgContext)
+                    // Batch'teki tüm frame'ler işlenince
+                    group.wait()
                     
-                    // Context'i geri yükle
-                    context.cgContext.restoreGState()
+                    // Frame'leri sıralı şekilde ekle
+                    for frame in processedFrames.sorted(by: { $0.index < $1.index }) {
+                        while !writerInput.isReadyForMoreMediaData {
+                            Thread.sleep(forTimeInterval: 0.1)
+                        }
+                        
+                        let frameTime = CMTimeMake(value: currentFrameIndex, timescale: CMTimeScale(frameRate))
+                        adaptor.append(frame.buffer, withPresentationTime: frameTime)
+                        currentFrameIndex += 1
+                    }
+                    
+                    // Batch işlemi bitti, belleği temizle
+                    processedFrames.removeAll()
                 }
-                
-                guard let buffer = watermarkedImage.pixelBuffer(size: videoSize) else {
-                    group.leave()
-                    continue
-                }
-                
-                let frameTime = CMTimeMake(value: frameCount, timescale: CMTimeScale(frameRate))
-                
-                while !writerInput.isReadyForMoreMediaData {
-                    Thread.sleep(forTimeInterval: 0.1)
-                }
-                
-                adaptor.append(buffer, withPresentationTime: frameTime)
-                frameCount += 1
-                group.leave()
             }
             
-            group.notify(queue: .main) {
-                writerInput.markAsFinished()
-                assetWriter.finishWriting {
-                    completion(assetWriter.status == .completed ? outputURL : nil)
-                }
+            // Son ilerlemeyi bildir
+            DispatchQueue.main.async {
+                onProgress?(1.0)
+            }
+            
+            // Video oluşturma işlemini bitir
+            writerInput.markAsFinished()
+            assetWriter.finishWriting {
+                completion(assetWriter.status == .completed ? outputURL : nil)
             }
         }
     }
     
     // GIF oluşturma fonksiyonu
-    func createGIF(from images: [UIImage], frameDelay: Double = 0.5, name: String, watermarkPosition: WatermarkPosition = .center, loopCount: Int = 0, completion: @escaping (URL?) -> Void) {
+    func createGIF(
+        from images: [UIImage],
+        frameDelay: Double = 0.5,
+        name: String,
+        watermarkPosition: WatermarkPosition = .center,
+        loopCount: Int = 0,
+        onProgress: ((Float) -> Void)? = nil,
+        completion: @escaping (URL?) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard !images.isEmpty else {
                 completion(nil)
@@ -198,77 +247,103 @@ final class AnimationManager {
             // Render context'i bir kere oluştur
             let renderer = UIGraphicsImageRenderer(size: targetSize)
             
-            // Paralel işleme için grup ve kuyruk oluştur
-            let group = DispatchGroup()
-            let queue = DispatchQueue(label: "com.morphogram.gifprocessing", qos: .userInitiated, attributes: .concurrent)
-            let serialQueue = DispatchQueue(label: "com.morphogram.gifserial", qos: .userInitiated)
+            // Batch işleme için değişkenler
+            let batchSize = min(15, images.count)
+            let totalBatches = Int(ceil(Double(images.count) / Double(batchSize)))
+            let totalImages = Float(images.count)
+            var processedImagesCount: Float = 0
             
-            // İşlenmiş görüntüleri saklamak için dizi
-            var processedImages: [(CGImage, Int)] = []
-            let lock = NSLock()
-            
-            // Her kareyi paralel olarak işle
-            for (index, image) in images.enumerated() {
-                group.enter()
-                
-                queue.async {
-                    // Görüntüyü yeniden boyutlandır
-                    let resizedImage = image.resize(to: targetSize)
+            // Her batch'i sırayla işle
+            for batchIndex in 0..<totalBatches {
+                autoreleasepool {
+                    let start = batchIndex * batchSize
+                    let end = min(start + batchSize, images.count)
+                    let currentBatch = Array(images[start..<end])
                     
-                    let watermarkedImage = renderer.image { context in
-                        // Orijinal görüntüyü çiz
-                        resizedImage.draw(in: CGRect(origin: .zero, size: targetSize))
+                    // Batch'teki görüntüleri işle
+                    let group = DispatchGroup()
+                    var processedFrames: [(CGImage, Int)] = []
+                    let lock = NSLock()
+                    
+                    // Batch'teki her görüntüyü paralel işle
+                    for (index, image) in currentBatch.enumerated() {
+                        group.enter()
                         
-                        // Context'i kaydet
-                        context.cgContext.saveGState()
-                        
-                        var transform = CGAffineTransform.identity
-                        // Pozisyona göre transform uygula
-                        switch watermarkPosition {
-                        case .center:
-                            transform = transform.translatedBy(x: targetSize.width/2, y: targetSize.height/2)
-                            transform = transform.rotated(by: .pi/4)
-                            transform = transform.translatedBy(x: -textSize.width/2, y: -textSize.height/2)
-                        case .topRight:
-                            transform = transform.translatedBy(x: targetSize.width - padding - textSize.width, y: padding)
-                        case .bottomRight:
-                            transform = transform.translatedBy(x: targetSize.width - padding - textSize.width, y: targetSize.height - padding - textSize.height)
-                        case .topLeft:
-                            transform = transform.translatedBy(x: padding, y: padding)
-                        case .bottomLeft:
-                            transform = transform.translatedBy(x: padding, y: targetSize.height - padding - textSize.height)
+                        autoreleasepool {
+                            // Görüntüyü yeniden boyutlandır
+                            let resizedImage = image.resize(to: targetSize)
+                            
+                            let watermarkedImage = renderer.image { context in
+                                // Orijinal görüntüyü çiz
+                                resizedImage.draw(in: CGRect(origin: .zero, size: targetSize))
+                                
+                                // Context'i kaydet
+                                context.cgContext.saveGState()
+                                
+                                var transform = CGAffineTransform.identity
+                                // Pozisyona göre transform uygula
+                                switch watermarkPosition {
+                                case .center:
+                                    transform = transform.translatedBy(x: targetSize.width/2, y: targetSize.height/2)
+                                    transform = transform.rotated(by: .pi/4)
+                                    transform = transform.translatedBy(x: -textSize.width/2, y: -textSize.height/2)
+                                case .topRight:
+                                    transform = transform.translatedBy(x: targetSize.width - padding - textSize.width, y: padding)
+                                case .bottomRight:
+                                    transform = transform.translatedBy(x: targetSize.width - padding - textSize.width, y: targetSize.height - padding - textSize.height)
+                                case .topLeft:
+                                    transform = transform.translatedBy(x: padding, y: padding)
+                                case .bottomLeft:
+                                    transform = transform.translatedBy(x: padding, y: targetSize.height - padding - textSize.height)
+                                }
+                                context.cgContext.concatenate(transform)
+                                
+                                // Watermark'ı çiz
+                                watermarkLayer.render(in: context.cgContext)
+                                
+                                // Context'i geri yükle
+                                context.cgContext.restoreGState()
+                            }
+                            
+                            if let cgImage = watermarkedImage.cgImage {
+                                lock.lock()
+                                processedFrames.append((cgImage, index))
+                                processedImagesCount += 1
+                                
+                                // Her görsel işlendiğinde ilerlemeyi güncelle
+                                let progress = processedImagesCount / totalImages
+                                DispatchQueue.main.async {
+                                    onProgress?(progress)
+                                }
+                                lock.unlock()
+                            }
+                            
+                            group.leave()
                         }
-                        context.cgContext.concatenate(transform)
-                        
-                        // Watermark'ı çiz
-                        watermarkLayer.render(in: context.cgContext)
-                        
-                        // Context'i geri yükle
-                        context.cgContext.restoreGState()
                     }
                     
-                    if let cgImage = watermarkedImage.cgImage {
-                        lock.lock()
-                        processedImages.append((cgImage, index))
-                        lock.unlock()
+                    // Batch'teki tüm frame'ler işlenince
+                    group.wait()
+                    
+                    // Frame'leri sıralı şekilde GIF'e ekle
+                    processedFrames.sorted { $0.1 < $1.1 }.forEach { image, _ in
+                        CGImageDestinationAddImage(destination, image, frameProperties as CFDictionary)
                     }
                     
-                    group.leave()
+                    // Batch işlemi bitti, belleği temizle
+                    processedFrames.removeAll()
                 }
             }
             
-            // Tüm işlemler bitince GIF'i oluştur
-            group.notify(queue: serialQueue) {
-                // Sıralı şekilde GIF'e ekle
-                processedImages.sorted { $0.1 < $1.1 }.forEach { image, _ in
-                    CGImageDestinationAddImage(destination, image, frameProperties as CFDictionary)
-                }
-                
-                let success = CGImageDestinationFinalize(destination)
-                
-                DispatchQueue.main.async {
-                    completion(success ? outputURL : nil)
-                }
+            // Son ilerlemeyi bildir
+            DispatchQueue.main.async {
+                onProgress?(1.0)
+            }
+            
+            let success = CGImageDestinationFinalize(destination)
+            
+            DispatchQueue.main.async {
+                completion(success ? outputURL : nil)
             }
         }
     }
@@ -293,19 +368,9 @@ struct RenderSettings {
 // Görüntü boyutlandırma için extension
 extension UIImage {
     func resize(to targetSize: CGSize) -> UIImage {
-        let size = self.size
-        let widthRatio  = targetSize.width  / size.width
-        let heightRatio = targetSize.height / size.height
-        let scale = min(widthRatio, heightRatio)
-        
-        let scaledSize = CGSize(
-            width: size.width * scale,
-            height: size.height * scale
-        )
-        
-        let renderer = UIGraphicsImageRenderer(size: scaledSize)
-        let scaledImage = renderer.image { _ in
-            self.draw(in: CGRect(origin: .zero, size: scaledSize))
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let scaledImage = renderer.image { context in
+            self.draw(in: CGRect(origin: .zero, size: targetSize), blendMode: .normal, alpha: 1.0) // Tam boyut için
         }
         
         return scaledImage

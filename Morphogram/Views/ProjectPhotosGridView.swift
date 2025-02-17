@@ -52,7 +52,7 @@ struct ProjectPhotosGridView: View {
                             GeometryReader { geo in
                                 if let fileName = photo.fileName {
                                     ZStack(alignment: .topTrailing) {
-                                        AsyncImageView(fileName: fileName, loadFullResolution: false)
+                                        AsyncImageView(fileName: fileName)
                                             .frame(width: geo.size.width, height: geo.size.width)
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
                                             .onTapGesture {

@@ -52,7 +52,7 @@ struct CreateAnimationView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isCreatingAnimation = false
     @State private var animationType: AnimationType = .video
-    @State private var frameRate: Double = 10.0
+    @State private var frameRate: Double = 7.5
     @State private var frameDelay: Double = 0.5
     @State private var exportURL: URL?
     @State private var showingExportSheet = false
@@ -63,6 +63,7 @@ struct CreateAnimationView: View {
     @State private var previewImages: [UIImage] = []
     @State private var selectedPhotos: Set<String> = []
     @State private var watermarkPosition: WatermarkPosition = .center
+    @State private var progress: Float = 0
     
     private var sortedPhotos: [ProjectPhoto] {
         project.photos.sorted { $0.createdAt < $1.createdAt }
@@ -90,7 +91,7 @@ struct CreateAnimationView: View {
                         
                         WatermarkOverlay(position: watermarkPosition)
                     }
-                    .animation(.easeInOut(duration: 0.2), value: currentPreviewIndex)
+                    .animation(.default, value: currentPreviewIndex)
                     .listRowInsets(EdgeInsets())
                 } else {
                     HStack {
@@ -121,33 +122,38 @@ struct CreateAnimationView: View {
                 if animationType == .video {
                     HStack {
                         Text("Yavaş")
-                        Slider(value: $frameRate, in: 10...15, step: 0.5) { _ in
+                        Slider(value: $frameRate, in: 5...10, step: 0.5) { _ in
                             startPreview()
                         }
                         Text("Hızlı")
                     }
                 } else {
                     HStack {
-                        Text("Erken")
-                        Slider(value: $frameDelay, in: 0.1...2.0, step: 0.1) { _ in
+                        Text("Hızlı")
+                        Slider(value: $frameDelay, in: 0.1...1.5, step: 0.3) { _ in
                             startPreview()
                         }
-                        Text("Geç")
+                        Text("Yavaş")
                     }
                 }
             }
+            .disabled(isCreatingAnimation)
             
             Section {
                 Button(action: createAnimation) {
                     if isCreatingAnimation {
-                        ProgressView()
-                            .progressViewStyle(.circular)
+                        HStack(spacing: 8) {
+                            Text("%\(Int(progress * 100))")
+                                .font(.caption)
+                            ProgressView(value: progress * 100, total: 100.0)
+                        }
+                        .frame(maxWidth: .infinity)
                     } else {
                         Text("\(animationType.rawValue) Oluştur")
                     }
                 }
-                .disabled(isCreatingAnimation)
-                if animationType == .gif {
+
+                if animationType == .gif, !isCreatingAnimation {
                     HStack {
                         Image(systemName: "info.circle")
                         Text("Dosya boyutu daha büyük olacaktır.")
@@ -156,7 +162,18 @@ struct CreateAnimationView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
                 }
+                
+                if isCreatingAnimation {
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text(animationType == .gif ? "GIF " : "Video " + "oluşturulurken lütfen bekleyin ve uygulamayı kapatmayın.")
+                    }
+                    .padding(.top, 4)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                }
             }
+            .disabled(isCreatingAnimation)
             
             Section("Filigran Konumu") {
                 Picker("Konum", selection: $watermarkPosition) {
@@ -166,6 +183,7 @@ struct CreateAnimationView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            .disabled(isCreatingAnimation)
             
             Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -199,6 +217,7 @@ struct CreateAnimationView: View {
                 }
                 .frame(height: 100)
             }
+            .disabled(isCreatingAnimation)
         }
         .navigationTitle("Animasyon Oluştur")
         .navigationBarTitleDisplayMode(.automatic)
@@ -212,8 +231,7 @@ struct CreateAnimationView: View {
                 ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)])
             }
         }
-        .onAppear {
-            // Tüm fotoğrafları seçili olarak işaretle
+        .task {
             selectedPhotos = Set(sortedPhotos.compactMap { $0.fileName })
             loadPreviewImages()
         }
@@ -223,13 +241,13 @@ struct CreateAnimationView: View {
     }
     
     private func loadPreviewImages() {
-        previewImages = sortedPhotos.compactMap { photo -> UIImage? in
-            guard let fileName = photo.fileName else { return nil }
-            guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
-            return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
-        }
-        
-        if !previewImages.isEmpty {
+        DispatchQueue.global(qos: .userInitiated).async {
+            previewImages = sortedPhotos.compactMap { photo -> UIImage? in
+                guard let fileName = photo.fileName else { return nil }
+                guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
+                return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
+            }
+            
             startPreview()
         }
     }
@@ -261,11 +279,12 @@ struct CreateAnimationView: View {
         guard !previewImages.isEmpty else { return }
         
         isCreatingAnimation = true
+        progress = 0
         
         let images = sortedPhotos.compactMap { photo -> UIImage? in
             guard let fileName = photo.fileName,
                   selectedPhotos.contains(fileName),
-                  let image = ImageManager.shared.loadImage(fileName: fileName, downSample: animationType == .gif) else { return nil }
+                  let image = ImageManager.shared.loadImage(fileName: fileName, downSample: true) else { return nil }
             return image
         }
         
@@ -274,7 +293,10 @@ struct CreateAnimationView: View {
                 from: images,
                 frameRate: Float(frameRate),
                 name: project.name,
-                watermarkPosition: watermarkPosition
+                watermarkPosition: watermarkPosition,
+                onProgress: { newProgress in
+                    progress = newProgress
+                }
             ) { url in
                 handleExportResult(url)
             }
@@ -283,7 +305,10 @@ struct CreateAnimationView: View {
                 from: images,
                 frameDelay: frameDelay,
                 name: project.name,
-                watermarkPosition: watermarkPosition
+                watermarkPosition: watermarkPosition,
+                onProgress: { newProgress in
+                    progress = newProgress
+                }
             ) { url in
                 handleExportResult(url)
             }
@@ -291,7 +316,7 @@ struct CreateAnimationView: View {
     }
     
     private func handleExportResult(_ url: URL?) {
-        isCreatingAnimation = false
+        progress = 0
         
         if let url = url {
             exportURL = url
@@ -300,6 +325,8 @@ struct CreateAnimationView: View {
             errorMessage = "Animasyon oluşturulamadı"
             showingError = true
         }
+        
+        isCreatingAnimation = false
     }
 }
 

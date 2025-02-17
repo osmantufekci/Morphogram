@@ -27,7 +27,7 @@ final class ImageManager {
         let fileURL = baseDirectory.appendingPathComponent(fileName, isDirectory: false)
         print("Fotoğraf kaydedilecek: \(fileURL.path)")
         
-        guard let data = image.jpegData(compressionQuality: 0.1) else {
+        guard let data = image.jpegData(compressionQuality: 0.3) else {
             print("Fotoğraf verisi oluşturulamadı")
             return false
         }
@@ -73,9 +73,8 @@ final class ImageManager {
             guard let image = UIImage(data: data) else { return nil }
             
             if downSample {
-                return downsample(imageAt: fileURL, to: CGSize(width: UIScreen.main.bounds.width * 0.95, height: 450))
+                return downsample(imageAt: fileURL, to: UIScreen.main.bounds.size)
             } else if thumbnail {
-                // Thumbnail oluştur
                 let thumbnailSize = CGSize(width: 200, height: 200)
                 let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
                 thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
@@ -90,10 +89,10 @@ final class ImageManager {
         }
     }
     
-    func loadImageAsync(fileName: String, thumbnail: Bool = true, completion: @escaping (UIImage) -> Void) {
+    func loadImageAsync(fileName: String, thumbnail: Bool = true, downSample: Bool = false, completion: @escaping (UIImage) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            if let image = self.loadImage(fileName: fileName, thumbnail: thumbnail) {
+            if let image = self.loadImage(fileName: fileName, thumbnail: thumbnail, downSample: downSample) {
                 DispatchQueue.main.async {
                     completion(image)
                 }

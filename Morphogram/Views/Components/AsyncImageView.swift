@@ -9,6 +9,7 @@ import SwiftUI
 struct AsyncImageView: View {
     let fileName: String
     var loadFullResolution: Bool = false
+    var downSampled: Bool = false
     
     @State private var thumbnailImage: Image?
     @State private var fullResImage: Image?
@@ -35,7 +36,7 @@ struct AsyncImageView: View {
             // Eğer tam çözünürlük isteniyorsa, onu da yükle
             if loadFullResolution && fullResImage == nil && !isLoadingFullRes {
                 isLoadingFullRes = true
-                ImageManager.shared.loadImageAsync(fileName: fileName, thumbnail: false) { loadedImage in
+                ImageManager.shared.loadImageAsync(fileName: fileName, thumbnail: false, downSample: downSampled) { loadedImage in
                     self.fullResImage = Image(uiImage: loadedImage)
                     self.isLoadingFullRes = false
                 }
