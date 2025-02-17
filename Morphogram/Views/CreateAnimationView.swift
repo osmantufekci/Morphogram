@@ -51,6 +51,14 @@ struct CreateAnimationView: View {
                     }
                     .frame(height: 300)
                 }
+                
+                HStack {
+                    Image(systemName: "info.circle")
+                    Text("Önizleme ile son çıktı arasında kalite farkı olabilir.")
+                }
+                .padding(.top, 4)
+                .font(.footnote)
+                .foregroundColor(.secondary)
             }
             
             Section("Animasyon Türü") {
@@ -90,6 +98,15 @@ struct CreateAnimationView: View {
                     }
                 }
                 .disabled(isCreatingAnimation)
+                if animationType == .gif {
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text("Dosya boyutu daha büyük olacaktır.")
+                    }
+                    .padding(.top, 4)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                }
             }
             
             Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
