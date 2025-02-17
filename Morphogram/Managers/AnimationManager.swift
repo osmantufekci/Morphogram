@@ -86,7 +86,7 @@ final class AnimationManager {
             let totalBatches = Int(ceil(Double(images.count) / Double(batchSize)))
             var currentFrameIndex: Int64 = 0
             let totalImages = Float(images.count)
-            var processedImagesCount: Float = 0
+            let processedImagesCount = Atomic<Float>(0)
             
             // Her batch'i sırayla işle
             for batchIndex in 0..<totalBatches {
@@ -98,7 +98,6 @@ final class AnimationManager {
                 autoreleasepool {
                     let group = DispatchGroup()
                     var processedFrames: [(buffer: CVPixelBuffer, index: Int)] = []
-                    let lock = NSLock()
                     
                     // Batch'teki her görüntüyü paralel işle
                     for (index, image) in currentBatch.enumerated() {
@@ -141,16 +140,13 @@ final class AnimationManager {
                             }
                             
                             if let buffer = watermarkedImage.pixelBuffer(size: videoSize) {
-                                lock.lock()
                                 processedFrames.append((buffer: buffer, index: index))
-                                processedImagesCount += 1
+                                let newCount = processedImagesCount.increment(by: 1)
                                 
                                 // Her görsel işlendiğinde ilerlemeyi güncelle
-                                let progress = processedImagesCount / totalImages
                                 DispatchQueue.main.async {
-                                    onProgress?(progress)
+                                    onProgress?(newCount / totalImages)
                                 }
-                                lock.unlock()
                             }
                         }
                         
@@ -251,7 +247,7 @@ final class AnimationManager {
             let batchSize = min(15, images.count)
             let totalBatches = Int(ceil(Double(images.count) / Double(batchSize)))
             let totalImages = Float(images.count)
-            var processedImagesCount: Float = 0
+            let processedImagesCount = Atomic<Float>(0)
             
             // Her batch'i sırayla işle
             for batchIndex in 0..<totalBatches {
@@ -263,7 +259,6 @@ final class AnimationManager {
                     // Batch'teki görüntüleri işle
                     let group = DispatchGroup()
                     var processedFrames: [(CGImage, Int)] = []
-                    let lock = NSLock()
                     
                     // Batch'teki her görüntüyü paralel işle
                     for (index, image) in currentBatch.enumerated() {
@@ -306,16 +301,13 @@ final class AnimationManager {
                             }
                             
                             if let cgImage = watermarkedImage.cgImage {
-                                lock.lock()
                                 processedFrames.append((cgImage, index))
-                                processedImagesCount += 1
+                                let newCount = processedImagesCount.increment(by: 1)
                                 
                                 // Her görsel işlendiğinde ilerlemeyi güncelle
-                                let progress = processedImagesCount / totalImages
                                 DispatchQueue.main.async {
-                                    onProgress?(progress)
+                                    onProgress?(newCount / totalImages)
                                 }
-                                lock.unlock()
                             }
                             
                             group.leave()
@@ -374,6 +366,22 @@ extension UIImage {
         }
         
         return scaledImage
+    }
+}
+
+final class Atomic<T: Numeric> {
+    private var value: T
+    private let queue = DispatchQueue(label: "com.morphogram.atomic")
+    
+    init(_ value: T) {
+        self.value = value
+    }
+    
+    func increment(by amount: T) -> T {
+        queue.sync {
+            value += amount
+            return value
+        }
     }
 }
 
