@@ -15,6 +15,7 @@ class AnimationManager {
             return
         }
         
+        FileManager.default.clearTmpDirectory()
         let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).mp4")
         let settings = RenderSettings(
             size: images[0].size,
@@ -140,6 +141,21 @@ private class VideoWriter {
         assetWriterInput.markAsFinished()
         assetWriter.finishWriting {
             completion(self.assetWriter.status == .completed)
+        }
+    }
+}
+
+extension FileManager {
+    func clearTmpDirectory() {
+        do {
+            let tmpDirURL = FileManager.default.temporaryDirectory
+            let tmpDirectory = try contentsOfDirectory(atPath: tmpDirURL.path)
+            try tmpDirectory.forEach { file in
+                let fileUrl = tmpDirURL.appendingPathComponent(file)
+                try removeItem(atPath: fileUrl.path)
+            }
+        } catch {
+            //catch the error somehow
         }
     }
 }
