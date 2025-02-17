@@ -261,7 +261,6 @@ struct CreateAnimationView: View {
         guard !previewImages.isEmpty else { return }
         
         isCreatingAnimation = true
-        stopPreview()
         
         let images = sortedPhotos.compactMap { photo -> UIImage? in
             guard let fileName = photo.fileName,
@@ -292,17 +291,14 @@ struct CreateAnimationView: View {
     }
     
     private func handleExportResult(_ url: URL?) {
-        DispatchQueue.main.async {
-            isCreatingAnimation = false
-            startPreview()
-            
-            if let url = url {
-                exportURL = url
-                showingExportSheet = true
-            } else {
-                errorMessage = "Animasyon oluşturulamadı"
-                showingError = true
-            }
+        isCreatingAnimation = false
+        
+        if let url = url {
+            exportURL = url
+            showingExportSheet = true
+        } else {
+            errorMessage = "Animasyon oluşturulamadı"
+            showingError = true
         }
     }
 }
