@@ -34,19 +34,6 @@ enum WatermarkPosition: String, CaseIterable {
     }
 }
 
-struct WatermarkOverlay: View {
-    let position: WatermarkPosition
-    
-    var body: some View {
-        Text("Morphogram")
-            .font(.system(size: 35, weight: .bold))
-            .foregroundColor(.white)
-            .opacity(0.10)
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: position.alignment)
-    }
-}
-
 struct CreateAnimationView: View {
     let project: Project
     @Environment(\.dismiss) private var dismiss
@@ -140,7 +127,11 @@ struct CreateAnimationView: View {
             .disabled(isCreatingAnimation)
             
             Section {
-                Button(action: createAnimation) {
+                Button(action: {
+                    Task {
+                        await createAnimation()
+                    }
+                }) {
                     if isCreatingAnimation {
                         HStack(spacing: 8) {
                             Text("%\(Int(progress * 100))")
@@ -166,7 +157,7 @@ struct CreateAnimationView: View {
                 if isCreatingAnimation {
                     HStack {
                         Image(systemName: "info.circle")
-                        Text(animationType == .gif ? "GIF " : "Video " + "oluşturulurken lütfen bekleyin ve uygulamayı kapatmayın.")
+                        Text((animationType == .gif ? "GIF" : "Video") + " oluşturulurken lütfen bekleyin ve uygulamayı kapatmayın.")
                     }
                     .padding(.top, 4)
                     .font(.footnote)
@@ -238,8 +229,15 @@ struct CreateAnimationView: View {
         .onChange(of: animationType) { _, _ in
             startPreview()
         }
+        .onChange(of: previewImages) { oldValue, newValue in
+            if newValue != oldValue {
+                startPreview()
+            }
+        }
     }
-    
+}
+
+extension CreateAnimationView {
     private func loadPreviewImages() {
         DispatchQueue.global(qos: .userInitiated).async {
             previewImages = sortedPhotos.compactMap { photo -> UIImage? in
@@ -247,8 +245,6 @@ struct CreateAnimationView: View {
                 guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
                 return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
             }
-            
-            startPreview()
         }
     }
     
@@ -275,42 +271,62 @@ struct CreateAnimationView: View {
         previewTimer = nil
     }
     
-    private func createAnimation() {
+    private func createAnimation() async {
         guard !previewImages.isEmpty else { return }
         
         isCreatingAnimation = true
         progress = 0
         
-        let images = sortedPhotos.compactMap { photo -> UIImage? in
-            guard let fileName = photo.fileName,
-                  selectedPhotos.contains(fileName),
-                  let image = ImageManager.shared.loadImage(fileName: fileName, downSample: true) else { return nil }
-            return image
+        let images = await withTaskGroup(of: UIImage?.self) { group in
+            var loadedImages: [UIImage] = []
+            
+            for photo in sortedPhotos {
+                group.addTask {
+                    guard let fileName = photo.fileName,
+                          await self.selectedPhotos.contains(fileName) else { return nil }
+                    return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
+                }
+            }
+            
+            for await image in group {
+                if let image = image {
+                    loadedImages.append(image)
+                }
+            }
+            
+            return loadedImages
         }
         
-        if animationType == .video {
-            AnimationManager.shared.createVideo(
-                from: images,
-                frameRate: Float(frameRate),
-                name: project.name,
-                watermarkPosition: watermarkPosition,
-                onProgress: { newProgress in
-                    progress = newProgress
-                }
-            ) { url in
-                handleExportResult(url)
+        await MainActor.run {
+            if images.isEmpty {
+                handleExportResult(nil)
+                return
             }
-        } else {
-            AnimationManager.shared.createGIF(
-                from: images,
-                frameDelay: frameDelay,
-                name: project.name,
-                watermarkPosition: watermarkPosition,
-                onProgress: { newProgress in
-                    progress = newProgress
+            
+            if animationType == .video {
+                AnimationManager.shared.createVideo(
+                    from: images,
+                    frameRate: Float(frameRate),
+                    name: project.name,
+                    watermarkPosition: watermarkPosition,
+                    onProgress: { newProgress in
+                        progress = newProgress
+                    }
+                ) { url in
+                    handleExportResult(url)
                 }
-            ) { url in
-                handleExportResult(url)
+            } else {
+                AnimationManager.shared.createGIF(
+                    from: images,
+                    frameDelay: frameDelay,
+                    name: project.name,
+                    watermarkPosition: watermarkPosition,
+                    onProgress: { newProgress in
+                        progress = newProgress
+                    }
+                ) { url in
+                    handleExportResult(url)
+                }
             }
         }
     }
