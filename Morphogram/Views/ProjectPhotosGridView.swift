@@ -20,7 +20,6 @@ struct ProjectPhotosGridView: View {
     @Namespace private var zoomTransition
     
     @State var columns: [GridItem] = Array(repeating: GridItem(.flexible()), count: initialGridCount)
-    @State private var showingAnimationCreator = false
     
     var body: some View {
         VStack {
@@ -163,7 +162,7 @@ struct ProjectPhotosGridView: View {
                         .disabled(project.photos.isEmpty)
                         
                         Button(action: {
-                            showingAnimationCreator = true
+                            router.navigate(CreateAnimationView(project: project))
                         }) {
                             Label("Animasyon Oluştur", systemImage: "film")
                         }
@@ -175,9 +174,6 @@ struct ProjectPhotosGridView: View {
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraView(project: project)
-            }
-            .sheet(isPresented: $showingAnimationCreator) {
-                CreateAnimationView(project: project)
             }
         }
     }

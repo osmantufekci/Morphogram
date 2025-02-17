@@ -15,6 +15,7 @@ struct CreateAnimationView: View {
     @State private var currentPreviewIndex = 0
     @State private var previewTimer: Timer?
     @State private var previewImages: [UIImage] = []
+    @State private var selectedPhotos: Set<String> = []
     
     private var sortedPhotos: [ProjectPhoto] {
         project.photos.sorted { $0.createdAt < $1.createdAt }
@@ -96,9 +97,26 @@ struct CreateAnimationView: View {
                     LazyHStack(spacing: 10) {
                         ForEach(sortedPhotos) { photo in
                             if let fileName = photo.fileName {
-                                AsyncImageView(fileName: fileName)
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                ZStack(alignment: .topTrailing) {
+                                    AsyncImageView(fileName: fileName)
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .onTapGesture {
+                                            if selectedPhotos.contains(fileName) {
+                                                selectedPhotos.remove(fileName)
+                                            } else {
+                                                selectedPhotos.insert(fileName)
+                                            }
+                                            loadPreviewImages()
+                                        }
+                                    
+                                    if selectedPhotos.contains(fileName) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .background(Circle().fill(Color.white))
+                                            .padding(4)
+                                    }
+                                }
                             }
                         }
                     }
@@ -109,15 +127,6 @@ struct CreateAnimationView: View {
         }
         .navigationTitle("Animasyon Oluştur")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("İptal") {
-                    stopPreview()
-                    dismiss()
-                }
-            }
-        }
-        
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }
         } message: {
@@ -129,6 +138,8 @@ struct CreateAnimationView: View {
             }
         }
         .onAppear {
+            // Tüm fotoğrafları seçili olarak işaretle
+            selectedPhotos = Set(sortedPhotos.compactMap { $0.fileName })
             loadPreviewImages()
         }
         .onChange(of: animationType) { _, _ in
@@ -139,6 +150,7 @@ struct CreateAnimationView: View {
     private func loadPreviewImages() {
         previewImages = sortedPhotos.compactMap { photo -> UIImage? in
             guard let fileName = photo.fileName else { return nil }
+            guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
             return ImageManager.shared.loadImage(fileName: fileName)
         }
         
@@ -171,7 +183,7 @@ struct CreateAnimationView: View {
     }
     
     private func createAnimation() {
-        guard !sortedPhotos.isEmpty else { return }
+        guard !previewImages.isEmpty else { return }
         
         isCreatingAnimation = true
         stopPreview()
