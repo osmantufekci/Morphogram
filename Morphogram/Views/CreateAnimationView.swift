@@ -116,11 +116,11 @@ struct CreateAnimationView: View {
                     }
                 } else {
                     HStack {
-                        Text("Hızlı")
-                        Slider(value: $frameDelay, in: 0.1...1.5, step: 0.3) { _ in
+                        Text("Yavaş")
+                        Slider(value: $frameDelay, in: 0.1...1.5, step: 0.1) { _ in
                             startPreview()
                         }
-                        Text("Yavaş")
+                        Text("Hızlı")
                     }
                 }
             }
@@ -253,7 +253,7 @@ extension CreateAnimationView {
         
         stopPreview()
         
-        let interval = animationType == .video ? 1.0 / frameRate : frameDelay
+        let interval = animationType == .video ? 1.0 / frameRate : (1.6 - frameDelay)
         
         previewTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             DispatchQueue.main.async {
@@ -318,7 +318,7 @@ extension CreateAnimationView {
             } else {
                 AnimationManager.shared.createGIF(
                     from: images,
-                    frameDelay: frameDelay,
+                    frameDelay: 1.6 - frameDelay,
                     name: project.name,
                     watermarkPosition: watermarkPosition,
                     onProgress: { newProgress in
