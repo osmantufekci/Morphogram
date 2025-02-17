@@ -51,10 +51,7 @@ struct CreateAnimationView: View {
     @State private var selectedPhotos: Set<String> = []
     @State private var watermarkPosition: WatermarkPosition = .center
     @State private var progress: Float = 0
-    
-    private var sortedPhotos: [ProjectPhoto] {
-        project.photos.sorted { $0.createdAt < $1.createdAt }
-    }
+    @State private var sortedPhotos: [ProjectPhoto] = []
     
     enum AnimationType: String, CaseIterable {
         case video = "Video"
@@ -191,7 +188,7 @@ struct CreateAnimationView: View {
                                             } else {
                                                 selectedPhotos.insert(fileName)
                                             }
-                                            loadPreviewImages()
+                                            loadPreviewImages(loadThumbnail: true)
                                         }
                                     
                                     if selectedPhotos.contains(fileName) {
@@ -223,6 +220,7 @@ struct CreateAnimationView: View {
             }
         }
         .task {
+            sortedPhotos = project.photos.sorted { $0.createdAt < $1.createdAt }
             selectedPhotos = Set(sortedPhotos.compactMap { $0.fileName })
             loadPreviewImages()
         }
@@ -238,12 +236,12 @@ struct CreateAnimationView: View {
 }
 
 extension CreateAnimationView {
-    private func loadPreviewImages() {
+    private func loadPreviewImages(loadThumbnail: Bool = false) {
         DispatchQueue.global(qos: .userInitiated).async {
             previewImages = sortedPhotos.compactMap { photo -> UIImage? in
                 guard let fileName = photo.fileName else { return nil }
                 guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
-                return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
+                return ImageManager.shared.loadImage(fileName: fileName, thumbnail: loadThumbnail, downSample: true)
             }
         }
     }
