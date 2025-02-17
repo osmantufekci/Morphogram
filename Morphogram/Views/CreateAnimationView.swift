@@ -1,6 +1,52 @@
 import SwiftUI
 import PhotosUI
 
+enum WatermarkPosition: String, CaseIterable {
+    case topLeft = "Sol Üst"
+    case bottomRight = "Sağ Alt"
+    case center = "Orta"
+    case bottomLeft = "Sol Alt"
+    case topRight = "Sağ Üst"
+    
+    var image: Image {
+        switch self {
+        case .topRight:
+            Image(systemName: "arrow.up.right")
+        case .bottomRight:
+            Image(systemName: "arrow.down.right")
+        case .center:
+            Image(systemName: "square.grid.3x3.middle.filled")
+        case .topLeft:
+            Image(systemName: "arrow.up.left")
+        case .bottomLeft:
+            Image(systemName: "arrow.down.left")
+        }
+    }
+    
+    var alignment: Alignment {
+        switch self {
+        case .center: return .center
+        case .topRight: return .topTrailing
+        case .bottomRight: return .bottomTrailing
+        case .topLeft: return .topLeading
+        case .bottomLeft: return .bottomLeading
+        }
+    }
+}
+
+struct WatermarkOverlay: View {
+    let position: WatermarkPosition
+    
+    var body: some View {
+        Text("Morphogram")
+            .font(.system(size: 35, weight: .bold))
+            .foregroundColor(.white)
+            .opacity(0.10)
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: position.alignment)
+    }
+}
+
 struct CreateAnimationView: View {
     let project: Project
     @Environment(\.dismiss) private var dismiss
@@ -16,6 +62,7 @@ struct CreateAnimationView: View {
     @State private var previewTimer: Timer?
     @State private var previewImages: [UIImage] = []
     @State private var selectedPhotos: Set<String> = []
+    @State private var watermarkPosition: WatermarkPosition = .center
     
     private var sortedPhotos: [ProjectPhoto] {
         project.photos.sorted { $0.createdAt < $1.createdAt }
@@ -40,6 +87,8 @@ struct CreateAnimationView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .opacity(index == currentPreviewIndex ? 1 : 0)
                         }
+                        
+                        WatermarkOverlay(position: watermarkPosition)
                     }
                     .animation(.easeInOut(duration: 0.2), value: currentPreviewIndex)
                     .listRowInsets(EdgeInsets())
@@ -109,6 +158,15 @@ struct CreateAnimationView: View {
                 }
             }
             
+            Section("Filigran Konumu") {
+                Picker("Konum", selection: $watermarkPosition) {
+                    ForEach(WatermarkPosition.allCases, id: \.self) { position in
+                        position.image.tag(position)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            
             Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
@@ -143,7 +201,7 @@ struct CreateAnimationView: View {
             }
         }
         .navigationTitle("Animasyon Oluştur")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.automatic)
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }
         } message: {
@@ -205,12 +263,29 @@ struct CreateAnimationView: View {
         isCreatingAnimation = true
         stopPreview()
         
+        let images = sortedPhotos.compactMap { photo -> UIImage? in
+            guard let fileName = photo.fileName,
+                  selectedPhotos.contains(fileName),
+                  let image = ImageManager.shared.loadImage(fileName: fileName) else { return nil }
+            return image
+        }
+        
         if animationType == .video {
-            AnimationManager.shared.createVideo(from: previewImages, frameRate: Float(frameRate), name: project.name) { url in
+            AnimationManager.shared.createVideo(
+                from: images,
+                frameRate: Float(frameRate),
+                name: project.name,
+                watermarkPosition: watermarkPosition
+            ) { url in
                 handleExportResult(url)
             }
         } else {
-            AnimationManager.shared.createGIF(from: previewImages, frameDelay: frameDelay) { url in
+            AnimationManager.shared.createGIF(
+                from: images,
+                frameDelay: frameDelay,
+                name: project.name,
+                watermarkPosition: watermarkPosition
+            ) { url in
                 handleExportResult(url)
             }
         }
