@@ -38,15 +38,17 @@ struct ImagePicker: UIViewControllerRepresentable {
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             picker.dismiss(animated: true)
             
-            guard let provider = results.first?.itemProvider else {
-                completion(nil)
-                return
-            }
-            
-            for result in results {
-                result.itemProvider.loadObject(ofClass: UIImage.self) { image, error in
-                    DispatchQueue.main.async {
-                        self.completion(image as? UIImage)
+            DispatchQueue.global(qos: .userInitiated).async {
+                guard let provider = results.first?.itemProvider else {
+                    self.completion(nil)
+                    return
+                }
+                
+                for result in results {
+                    result.itemProvider.loadObject(ofClass: UIImage.self) { image, error in
+                        DispatchQueue.main.async {
+                            self.completion(image as? UIImage)
+                        }
                     }
                 }
             }

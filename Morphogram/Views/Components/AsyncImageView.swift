@@ -8,21 +8,21 @@ import SwiftUI
 
 struct AsyncImageView: View {
     let fileName: String
-    @State private var image: UIImage?
+    @State private var image: Image?
     
     var body: some View {
         Group {
             if let image = image {
-                Image(uiImage: image)
+                image
                     .resizable()
                     .scaledToFill()
             } else {
                 ProgressView()
             }
         }
-        .onAppear {
+        .task {
             ImageManager.shared.loadImageAsync(fileName: fileName) { loadedImage in
-                self.image = loadedImage
+                self.image = Image(uiImage: loadedImage)
             }
         }
     }

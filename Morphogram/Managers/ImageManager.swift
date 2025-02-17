@@ -38,7 +38,7 @@ class ImageManager {
         let fileURL = baseDirectory.appendingPathComponent(fileName, isDirectory: false)
         print("Fotoğraf kaydedilecek: \(fileURL.path)")
         
-        guard let data = image.jpegData(compressionQuality: 0.5) else {
+        guard let data = image.jpegData(compressionQuality: 0.1) else {
             print("Fotoğraf verisi oluşturulamadı")
             return false
         }
@@ -87,15 +87,14 @@ class ImageManager {
         }
     }
     
-    func loadImageAsync(fileName: String, completion: @escaping (UIImage?) -> Void) {
+    func loadImageAsync(fileName: String, completion: @escaping (UIImage) -> Void) {
         print("Asenkron fotoğraf yükleme başlatıldı: \(fileName)")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { 
                 print("ImageManager instance nil")
                 return 
             }
-            let image = self.loadImage(fileName: fileName)
-            DispatchQueue.main.async {
+            if let image = self.loadImage(fileName: fileName) {
                 completion(image)
             }
         }
