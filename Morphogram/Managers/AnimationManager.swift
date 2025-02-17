@@ -15,13 +15,12 @@ class AnimationManager {
             return
         }
         
-        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).mp4")
+        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).mp4")
         let settings = RenderSettings(
             size: images[0].size,
             fps: frameRate,
             avCodecKey: AVVideoCodecType.h264,
-            videoFilepath: outputURL.path,
-            videoName: name
+            videoFilepath: outputURL.path
         )
         
         guard let videoWriter = try? VideoWriter(settings: settings) else {
@@ -31,7 +30,6 @@ class AnimationManager {
         
         videoWriter.start()
         
-        let frameInterval = CMTime(seconds: 1.0 / Double(frameRate), preferredTimescale: 600)
         var frameCount: Int64 = 0
         
         for image in images {
@@ -88,7 +86,6 @@ private struct RenderSettings {
     var fps: Float
     var avCodecKey: AVVideoCodecType
     var videoFilepath: String
-    var videoName: String
     
     var videoSettings: [String: Any] {
         [

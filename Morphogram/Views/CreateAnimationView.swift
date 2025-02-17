@@ -125,7 +125,7 @@ struct CreateAnimationView: View {
         }
         .sheet(isPresented: $showingExportSheet) {
             if let url = exportURL {
-                ShareSheet(activityItems: [url])
+                ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)])
             }
         }
         .onAppear {
@@ -201,4 +201,43 @@ struct CreateAnimationView: View {
             }
         }
     }
+}
+
+// ActivityItemSource sınıfını ekleyelim
+class CustomActivityItemSource: NSObject, UIActivityItemSource {
+    let url: URL
+    let projectName: String
+    
+    init(url: URL, projectName: String) {
+        self.url = url
+        self.projectName = projectName
+        super.init()
+    }
+    
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        return url
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        return url
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
+        return projectName
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?) -> String {
+        return url.pathExtension == "gif" ? "com.compuserve.gif" : "public.mpeg-4"
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

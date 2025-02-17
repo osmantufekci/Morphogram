@@ -15,7 +15,7 @@ struct ImagePicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration()
         config.filter = .images
-        config.selectionLimit = 1
+        config.selectionLimit = 0
         
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
@@ -43,8 +43,8 @@ struct ImagePicker: UIViewControllerRepresentable {
                 return
             }
             
-            if provider.canLoadObject(ofClass: UIImage.self) {
-                provider.loadObject(ofClass: UIImage.self) { image, error in
+            for result in results {
+                result.itemProvider.loadObject(ofClass: UIImage.self) { image, error in
                     DispatchQueue.main.async {
                         self.completion(image as? UIImage)
                     }
