@@ -52,7 +52,7 @@ struct ProjectPhotosGridView: View {
                             GeometryReader { geo in
                                 if let fileName = photo.fileName {
                                     ZStack(alignment: .topTrailing) {
-                                        AsyncImageView(fileName: fileName)
+                                        AsyncImageView(fileName: fileName, loadFullResolution: false)
                                             .frame(width: geo.size.width, height: geo.size.width)
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
                                             .onTapGesture {
@@ -148,7 +148,7 @@ struct ProjectPhotosGridView: View {
                     }
                     .padding()
                 }
-                .navigationTitle(project.name)
+                .navigationTitle("\(project.name) (\(project.photos.count))")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {

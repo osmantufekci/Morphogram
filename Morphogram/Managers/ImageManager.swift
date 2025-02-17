@@ -1,21 +1,22 @@
 import UIKit
 
-class ImageManager {
+final class ImageManager {
     static let shared = ImageManager()
     
     private let fileManager = FileManager.default
     private let appGroupIdentifier = "group.com.Trionode.Morphogram"
+    private let baseDirectory: URL
+    private var imageCache = NSCache<NSString, UIImage>()
+    private var thumbnailCache = NSCache<NSString, UIImage>()
     
     private init() {
+        baseDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        // Cache limitleri
+        imageCache.countLimit = 50 // Maksimum 50 tam boyutlu görüntü
+        thumbnailCache.countLimit = 100 // Maksimum 100 thumbnail
+        imageCache.totalCostLimit = 250 * 1024 * 1024 // 250 MB
+        thumbnailCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
         printDirectoryContents()
-    }
-    
-    private var baseDirectory: URL {
-        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            fatalError("Documents dizini bulunamadı")
-        }
-        print("Belge dizini: \(documentsDirectory.path)")
-        return documentsDirectory
     }
     
     private func printDirectoryContents() {
@@ -60,42 +61,53 @@ class ImageManager {
         }
     }
     
-    func loadImage(fileName: String) -> UIImage? {
+    func loadImage(fileName: String, thumbnail: Bool = false) -> UIImage? {
+        let cacheKey = (fileName + (thumbnail ? "_thumb" : "")) as NSString
+        
+        // Önce cache'e bak
+        if thumbnail {
+            if let cachedImage = thumbnailCache.object(forKey: cacheKey) {
+                return cachedImage
+            }
+        } else {
+            if let cachedImage = imageCache.object(forKey: cacheKey) {
+                return cachedImage
+            }
+        }
+        
         let fileURL = baseDirectory.appendingPathComponent(fileName)
-        print("Fotoğraf yükleme denemesi: \(fileURL.path)")
         
         guard fileManager.fileExists(atPath: fileURL.path) else {
-            print("Fotoğraf bulunamadı: \(fileURL.path)")
-            printDirectoryContents()
             return nil
         }
         
         do {
             let data = try Data(contentsOf: fileURL)
-            print("Dosya okundu (\(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)))")
+            guard let image = UIImage(data: data) else { return nil }
             
-            if let image = UIImage(data: data) {
-                print("Fotoğraf başarıyla yüklendi: \(fileName)")
-                return image
+            if thumbnail {
+                // Thumbnail oluştur
+                let thumbnailSize = CGSize(width: 200, height: 200)
+                let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
+                thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
+                return thumbnailImage
             } else {
-                print("Fotoğraf verisi görüntüye dönüştürülemedi: \(fileName)")
-                return nil
+                imageCache.setObject(image, forKey: cacheKey)
+                return image
             }
         } catch {
-            print("Fotoğraf yüklenirken hata oluştu: \(error)")
+            print("Görüntü yüklenirken hata: \(error)")
             return nil
         }
     }
     
-    func loadImageAsync(fileName: String, completion: @escaping (UIImage) -> Void) {
-        print("Asenkron fotoğraf yükleme başlatıldı: \(fileName)")
+    func loadImageAsync(fileName: String, thumbnail: Bool = true, completion: @escaping (UIImage) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { 
-                print("ImageManager instance nil")
-                return 
-            }
-            if let image = self.loadImage(fileName: fileName) {
-                completion(image)
+            guard let self = self else { return }
+            if let image = self.loadImage(fileName: fileName, thumbnail: thumbnail) {
+                DispatchQueue.main.async {
+                    completion(image)
+                }
             }
         }
     }
@@ -124,5 +136,10 @@ class ImageManager {
         let exists = fileManager.fileExists(atPath: fileURL.path)
         print("Fotoğraf kontrolü: \(fileName) - \(exists ? "Mevcut" : "Bulunamadı")")
         return exists
+    }
+    
+    func clearCache() {
+        imageCache.removeAllObjects()
+        thumbnailCache.removeAllObjects()
     }
 }
