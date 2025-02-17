@@ -20,6 +20,7 @@ struct ProjectPhotosGridView: View {
     @Namespace private var zoomTransition
     
     @State var columns: [GridItem] = Array(repeating: GridItem(.flexible()), count: initialGridCount)
+    @State private var showingAnimationCreator = false
     
     var body: some View {
         VStack {
@@ -151,18 +152,32 @@ struct ProjectPhotosGridView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        withAnimation {
-                            isEditing.toggle()
+                    Menu {
+                        Button(action: {
+                            withAnimation {
+                                isEditing.toggle()
+                            }
+                        }) {
+                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil")
                         }
-                    }) {
-                        Text(isEditing ? "Bitti" : "Düzenle")
+                        .disabled(project.photos.isEmpty)
+                        
+                        Button(action: {
+                            showingAnimationCreator = true
+                        }) {
+                            Label("Animasyon Oluştur", systemImage: "film")
+                        }
+                        .disabled(project.photos.count < 2)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .disabled(project.photos.isEmpty)
                 }
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraView(project: project)
+            }
+            .sheet(isPresented: $showingAnimationCreator) {
+                CreateAnimationView(project: project)
             }
         }
     }
