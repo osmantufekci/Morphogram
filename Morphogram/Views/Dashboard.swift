@@ -43,14 +43,14 @@ struct Dashboard: View {
                                 Button {
                                     router.navigate(AddProjectView(project: project))
                                 } label: {
-                                    Label("Ayarlar", systemImage: "gear")
+                                    Image(systemName: "gear")
                                 }
                                 .tint(.blue)
                                 
                                 Button(role: .destructive) {
                                     deleteProject(project)
                                 } label: {
-                                    Label("Sil", systemImage: "trash")
+                                    Image(systemName: "trash")
                                 }
                             }
                             .listRowSeparator(.hidden)
@@ -70,7 +70,7 @@ struct Dashboard: View {
                                 .font(.title2)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
+                                .frame(width: 54, height: 54)
                                 .background(Color.blue)
                                 .clipShape(Circle())
                                 .shadow(radius: 4)

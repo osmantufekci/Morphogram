@@ -22,39 +22,59 @@ struct ProjectPhotosGridView: View {
     @State var columns: [GridItem] = Array(repeating: GridItem(.flexible()), count: initialGridCount)
     
     var body: some View {
-        VStack {
-            if isEditing {
-                ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
-                    .padding()
-            }
-            ScrollView {
-                LazyVGrid(columns: columns) {
-                    
-                    if !isEditing {
-                        Button(action: {
-                            showCamera = true
-                        }) {
-                            VStack {
-                                Image(systemName: "camera.fill")
-                                    .frame(width: project.photos.isEmpty ? 125 : itemSize.width, height: project.photos.isEmpty ? 125 : itemSize.width)
-                                    .font(.system(size: 44))
-                                    .foregroundColor(.accentColor)
-                                    .background(Color.gray.opacity(0.2))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+        ZStack {
+            VStack {
+                if isEditing {
+                    ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
+                        .padding()
+                }
+                ScrollView {
+                    LazyVGrid(columns: columns) {
+                        
+                        if !isEditing {
+                            Button(action: {
+                                showCamera = true
+                            }) {
+                                VStack {
+                                    Image(systemName: "camera.fill")
+                                        .frame(width: project.photos.isEmpty ? 125 : itemSize.width, height: project.photos.isEmpty ? 125 : itemSize.width)
+                                        .font(.system(size: 44))
+                                        .foregroundColor(.accentColor)
+                                        .background(Color.gray.opacity(0.2))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
                             }
                         }
-                    }
-                    
-                    ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) {
-                        index,
-                        photo in
-                        GeometryReader { geo in
-                            if let fileName = photo.fileName {
-                                ZStack(alignment: .topTrailing) {
-                                    AsyncImageView(fileName: fileName)
-                                        .frame(width: geo.size.width, height: geo.size.width)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        .onTapGesture {
+                        
+                        ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) {
+                            index,
+                            photo in
+                            GeometryReader { geo in
+                                if let fileName = photo.fileName {
+                                    ZStack(alignment: .topTrailing) {
+                                        AsyncImageView(fileName: fileName)
+                                            .frame(width: geo.size.width, height: geo.size.width)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .onTapGesture {
+                                                router.navigate(
+                                                    FullscreenPhotoView(
+                                                        photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
+                                                        initialIndex: index,
+                                                        onDelete: { photo in
+                                                            deletePhoto(photo)
+                                                        }
+                                                    ).environmentObject(router)
+                                                )
+                                            }
+                                    }
+                                    .onAppear {
+                                        itemSize = geo.size
+                                    }
+                                    .onChange(of: itemSize) { _, newSize in
+                                        itemSize = newSize
+                                    }
+                                    .contextMenu {
+                                        Button {
                                             router.navigate(
                                                 FullscreenPhotoView(
                                                     photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
@@ -62,118 +82,111 @@ struct ProjectPhotosGridView: View {
                                                     onDelete: { photo in
                                                         deletePhoto(photo)
                                                     }
-                                                ).environmentObject(router)
-                                            )
-                                        }
-                                }
-                                .onAppear {
-                                    itemSize = geo.size
-                                }
-                                .onChange(of: itemSize) { _, newSize in
-                                    itemSize = newSize
-                                }
-                                .contextMenu {
-                                    Button {
-                                        router.navigate(
-                                            FullscreenPhotoView(
-                                                photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
-                                                initialIndex: index,
-                                                onDelete: { photo in
-                                                    deletePhoto(photo)
-                                                }
-                                            )
-                                            .environmentObject(router)
-                                            .navigationTransition(
-                                                .zoom(
-                                                    sourceID: photo.id,
-                                                    in: zoomTransition
+                                                )
+                                                .environmentObject(router)
+                                                .navigationTransition(
+                                                    .zoom(
+                                                        sourceID: photo.id,
+                                                        in: zoomTransition
+                                                    )
                                                 )
                                             )
-                                        )
-                                    } label: {
-                                        Label("Tam Ekran Görüntüle", systemImage: "arrow.up.left.and.arrow.down.right")
-                                    }
-                                    
-                                    Button(role: .destructive) {
-                                        deletePhoto(photo)
-                                    } label: {
-                                        Label("Sil", systemImage: "trash")
-                                    }
-                                } preview: {
-                                    if let fileName = photo.fileName {
-                                        if #available(iOS 18.0, *) {
-                                            AsyncImageView(fileName: fileName)
-                                                .frame(maxWidth: 300, maxHeight: 300)
-                                                .matchedTransitionSource(id: photo.id, in: zoomTransition)
-                                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        } else {
-                                            AsyncImageView(fileName: fileName)
-                                                .frame(maxWidth: 300, maxHeight: 300)
-                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        } label: {
+                                            Label("Tam Ekran Görüntüle", systemImage: "arrow.up.left.and.arrow.down.right")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            deletePhoto(photo)
+                                        } label: {
+                                            Label("Sil", systemImage: "trash")
+                                        }
+                                    } preview: {
+                                        if let fileName = photo.fileName {
+                                            if #available(iOS 18.0, *) {
+                                                AsyncImageView(fileName: fileName)
+                                                    .frame(maxWidth: 300, maxHeight: 300)
+                                                    .matchedTransitionSource(id: photo.id, in: zoomTransition)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            } else {
+                                                AsyncImageView(fileName: fileName)
+                                                    .frame(maxWidth: 300, maxHeight: 300)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        .aspectRatio(1, contentMode: .fit)
-                        .overlay(
-                            Text(formatDate(photo.createdAt))
-                                .font(.caption)
-                                .padding(4)
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(4)
-                                .padding(4),
-                            alignment: .bottom
-                        )
-                        .overlay(alignment: .topTrailing, content: {
-                            if isEditing {
-                                Button(action: {
-                                    withAnimation {
-                                        deletePhoto(photo)
-                                        isEditing = !project.photos.isEmpty
+                            .aspectRatio(1, contentMode: .fit)
+                            .overlay(
+                                Text(formatDate(photo.createdAt))
+                                    .font(.caption)
+                                    .padding(4)
+                                    .background(.ultraThinMaterial)
+                                    .cornerRadius(4)
+                                    .padding(4),
+                                alignment: .bottom
+                            )
+                            .overlay(alignment: .topTrailing, content: {
+                                if isEditing {
+                                    Button(action: {
+                                        withAnimation {
+                                            deletePhoto(photo)
+                                            isEditing = !project.photos.isEmpty
+                                        }
+                                    }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(.red)
+                                            .background(Color.white)
+                                            .clipShape(Circle())
                                     }
-                                }) {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.red)
-                                        .background(Color.white)
-                                        .clipShape(Circle())
+                                    .offset(x: 7, y: -7)
                                 }
-                                .offset(x: 7, y: -7)
-                            }
-                        })
-                        .wiggle(isActive: isEditing)
+                            })
+                            .wiggle(isActive: isEditing)
+                        }
                     }
+                    .padding()
                 }
-                .padding()
-            }
-            .navigationTitle(project.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
+                .navigationTitle(project.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
                             withAnimation {
                                 isEditing.toggle()
                             }
                         }) {
-                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil")
+                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil.circle.fill")
                         }
                         .disabled(project.photos.isEmpty)
-                        
-                        Button(action: {
-                            router.navigate(CreateAnimationView(project: project))
-                        }) {
-                            Label("Animasyon Oluştur", systemImage: "film")
-                        }
-                        .disabled(project.photos.count < 2)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
                     }
                 }
+                .fullScreenCover(isPresented: $showCamera) {
+                    CameraView(project: project)
+                }
             }
-            .fullScreenCover(isPresented: $showCamera) {
-                CameraView(project: project)
+            
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        router.navigate(CreateAnimationView(project: project))
+                    }) {
+                        Image(systemName: "film")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 54, height: 54)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .opacity(project.photos.isEmpty ? 0 : 1)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
             }
         }
     }

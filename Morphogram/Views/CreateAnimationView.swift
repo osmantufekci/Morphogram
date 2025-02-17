@@ -92,7 +92,7 @@ struct CreateAnimationView: View {
                 .disabled(isCreatingAnimation)
             }
             
-            Section("Fotoğraflar (\(sortedPhotos.count))") {
+            Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
                         ForEach(sortedPhotos) { photo in
