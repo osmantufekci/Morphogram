@@ -67,7 +67,7 @@ class PhotoViewController: UIViewController {
         let fileManager = FileManager.default
         let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let imagePath = documentsPath.appendingPathComponent(fileName)
-        return downsample(imageAt: imagePath, to: UIScreen.main.bounds.size)
+        return downsample(imageAt: imagePath, to: .k4K)
     }
 }
 

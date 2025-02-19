@@ -15,7 +15,7 @@ func formatDate(_ date: Date) -> String {
 }
 
 func downsample(imageAt imageURL: URL,
-                to pointSize: CGSize,
+                to resolution: Resolution,
                 scale: CGFloat = UIScreen.main.scale) -> UIImage? {
 
     // Create an CGImageSource that represent an image
@@ -25,7 +25,7 @@ func downsample(imageAt imageURL: URL,
     }
     
     // Calculate the desired dimension
-    let maxDimensionInPixels = max(pointSize.width, pointSize.height) * scale
+    let maxDimensionInPixels = max(resolution.size.width, resolution.size.height) * scale
     
     // Perform downsampling
     let downsampleOptions = [
@@ -38,6 +38,6 @@ func downsample(imageAt imageURL: URL,
         return nil
     }
     
-    // Return the downsampled image as UIImage
+    print("Downsampled image loaded:", imageURL.lastPathComponent, "size:", downsampledImage.height, downsampledImage.width)
     return UIImage(cgImage: downsampledImage)
 }

@@ -1,5 +1,25 @@
 import UIKit
 
+enum Resolution {
+    case k4K, k1080p, k720p
+    
+    var size: CGSize {
+        return switch self {
+        case .k4K: .init(width: 3840, height: 2160)
+        case .k1080p: .init(width: 1920, height: 1080)
+        case .k720p: .init(width: 1280, height: 720)
+        }
+    }
+    
+    var cacheKey: String {
+        return switch self {
+        case .k4K: "_4K"
+        case .k1080p: "_1080p"
+        case .k720p: "_720p"
+        }
+    }
+}
+
 final class ImageManager {
     static let shared = ImageManager()
     
@@ -8,6 +28,7 @@ final class ImageManager {
     private let baseDirectory: URL
     private var imageCache = NSCache<NSString, UIImage>()
     private var thumbnailCache = NSCache<NSString, UIImage>()
+    private var isDir: UnsafeMutablePointer<ObjCBool>?
     
     private init() {
         baseDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -33,7 +54,7 @@ final class ImageManager {
         }
         
         do {
-            if fileManager.fileExists(atPath: fileURL.path) {
+            if fileManager.fileExists(atPath: fileURL.path, isDirectory: isDir) {
                 try fileManager.removeItem(at: fileURL)
                 print("Eski fotoğraf silindi")
             }
@@ -54,17 +75,19 @@ final class ImageManager {
         // Önce cache'e bak
         if thumbnail {
             if let cachedImage = thumbnailCache.object(forKey: cacheKey) {
+                print("Thumbnail loaded:", cacheKey)
                 return cachedImage
             }
         } else {
             if let cachedImage = imageCache.object(forKey: cacheKey) {
+                print("Cached Image loaded:", cacheKey, "size:", cachedImage.size)
                 return cachedImage
             }
         }
         
         let fileURL = baseDirectory.appendingPathComponent(fileName)
         
-        guard fileManager.fileExists(atPath: fileURL.path) else {
+        guard fileManager.fileExists(atPath: fileURL.path, isDirectory: isDir) else {
             return nil
         }
         
@@ -73,13 +96,15 @@ final class ImageManager {
             guard let image = UIImage(data: data) else { return nil }
             
             if downSample {
-                return downsample(imageAt: fileURL, to: UIScreen.main.bounds.size)
+                return downsample(imageAt: fileURL, to: .k4K)
             } else if thumbnail {
-                let thumbnailSize = CGSize(width: 200, height: 200)
+                let thumbnailSize = CGSize(width: 150, height: 150)
                 let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
                 thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
+                imageCache.setObject(image, forKey: fileName as NSString)
                 return thumbnailImage
             } else {
+                print("Cache Image set:", cacheKey, image.size)
                 imageCache.setObject(image, forKey: cacheKey)
                 return image
             }
@@ -104,7 +129,7 @@ final class ImageManager {
         let fileURL = baseDirectory.appendingPathComponent(fileName)
         print("Fotoğraf silme denemesi: \(fileURL.path)")
         
-        guard fileManager.fileExists(atPath: fileURL.path) else {
+        guard fileManager.fileExists(atPath: fileURL.path, isDirectory: isDir) else {
             print("Silinecek fotoğraf bulunamadı: \(fileURL.path)")
             return
         }
@@ -119,13 +144,8 @@ final class ImageManager {
     
     func verifyImageExists(fileName: String) -> Bool {
         let fileURL = baseDirectory.appendingPathComponent(fileName)
-        let exists = fileManager.fileExists(atPath: fileURL.path)
+        let exists = fileManager.fileExists(atPath: fileURL.path, isDirectory: isDir)
         print("Fotoğraf kontrolü: \(fileName) - \(exists ? "Mevcut" : "Bulunamadı")")
         return exists
-    }
-    
-    func clearCache() {
-        imageCache.removeAllObjects()
-        thumbnailCache.removeAllObjects()
     }
 }

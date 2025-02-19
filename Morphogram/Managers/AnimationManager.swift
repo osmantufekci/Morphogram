@@ -159,7 +159,7 @@ final class AnimationManager {
                     // Frame'leri sıralı şekilde ekle
                     for frame in processedFrames.sorted(by: { $0.index < $1.index }) {
                         while !writerInput.isReadyForMoreMediaData {
-                            Thread.sleep(forTimeInterval: 0.1)
+                            Thread.sleep(forTimeInterval: 0.01)
                         }
                         
                         let frameTime = CMTimeMake(value: currentFrameIndex, timescale: CMTimeScale(frameRate))

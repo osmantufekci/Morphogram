@@ -52,7 +52,7 @@ struct ProjectPhotosGridView: View {
                             GeometryReader { geo in
                                 if let fileName = photo.fileName {
                                     ZStack(alignment: .topTrailing) {
-                                        AsyncImageView(fileName: fileName)
+                                        AsyncImageView(fileName: fileName, loadFullResolution: false)
                                             .frame(width: geo.size.width, height: geo.size.width)
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
                                             .onTapGesture {
@@ -103,13 +103,13 @@ struct ProjectPhotosGridView: View {
                                     } preview: {
                                         if let fileName = photo.fileName {
                                             if #available(iOS 18.0, *) {
-                                                AsyncImageView(fileName: fileName, loadFullResolution: true)
-                                                    .frame(maxWidth: 300, maxHeight: 300)
+                                                AsyncImageView(fileName: fileName, loadFullResolution: false)
+                                                    .frame(maxWidth: 325, maxHeight: 400)
                                                     .matchedTransitionSource(id: photo.id, in: zoomTransition)
                                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                             } else {
-                                                AsyncImageView(fileName: fileName, loadFullResolution: true)
-                                                    .frame(maxWidth: 300, maxHeight: 300)
+                                                AsyncImageView(fileName: fileName, loadFullResolution: false)
+                                                    .frame(maxWidth: 325, maxHeight: 400)
                                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                             }
                                         }
