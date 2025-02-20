@@ -74,9 +74,13 @@ final class AnimationManager {
             kCVPixelBufferWidthKey as String: NSNumber(value: Float(outputSize.size.width)),
             kCVPixelBufferHeightKey as String: NSNumber(value: Float(outputSize.size.height))
         ]
-        let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: videoWriterInput, sourcePixelBufferAttributes: sourcePixelBufferAttributesDictionary)
+        let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: videoWriterInput,
+            sourcePixelBufferAttributes: sourcePixelBufferAttributesDictionary
+        )
         
         if videoWriter.canAdd(videoWriterInput) {
+            videoWriterInput.expectsMediaDataInRealTime = false
             videoWriter.add(videoWriterInput)
         }
         var chosenImages = images
@@ -87,12 +91,12 @@ final class AnimationManager {
             let mediaQueue = DispatchQueue(__label: "mediaInputQueue", attr: nil)
             
             videoWriterInput.requestMediaDataWhenReady(on: mediaQueue, using: { () -> Void in
-                let fps: Int32 = Int32(frameRate)
-                let frameDuration = CMTimeMake(value: 1, timescale: fps)
-                
-                var frameCount: Int64 = 0
-                var appendSucceeded = true
-                
+                    let fps: Int32 = Int32(frameRate)
+                    let frameDuration = CMTimeMake(value: 1, timescale: fps)
+                    
+                    var frameCount: Int64 = 0
+                    var appendSucceeded = true
+                    
                 while (!chosenImages.isEmpty) {
                     if (videoWriterInput.isReadyForMoreMediaData) {
                         guard let nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue }
@@ -101,7 +105,7 @@ final class AnimationManager {
                         
                         var pixelBuffer: CVPixelBuffer? = nil
                         let status: CVReturn = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelBufferAdaptor.pixelBufferPool!, &pixelBuffer)
-                        
+
                         if let pixelBuffer = pixelBuffer, status == 0 {
                             let managedPixelBuffer = pixelBuffer
                             
@@ -109,21 +113,19 @@ final class AnimationManager {
                             
                             let data = CVPixelBufferGetBaseAddress(managedPixelBuffer)
                             let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-                            let context = CGContext(data: data, width: Int(outputSize.size.width), height: Int(outputSize.size.height), bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer), space: rgbColorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)
+                            let context = CGContext(
+                                data: data,
+                                width: Int(outputSize.size.width),
+                                height: Int(outputSize.size.height),
+                                bitsPerComponent: 8,
+                                bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer),
+                                space: rgbColorSpace,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                            )
                             
                             context?.clear(CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
                             
-                            let horizontalRatio = CGFloat(outputSize.size.width) / nextPhoto.size.width
-                            let verticalRatio = CGFloat(outputSize.size.height) / nextPhoto.size.height
-                            
-                            let aspectRatio = min(horizontalRatio, verticalRatio) // ScaleAspectFit
-                            
-                            let newSize = CGSize(width: nextPhoto.size.width * aspectRatio, height: nextPhoto.size.height * aspectRatio)
-                            
-                            let x = newSize.width < outputSize.size.width ? (outputSize.size.width - newSize.width) / 2 : 0
-                            let y = newSize.height < outputSize.size.height ? (outputSize.size.height - newSize.height) / 2 : 0
-                            
-                            context?.draw(nextPhoto.cgImage!, in: CGRect(x: x, y: y, width: newSize.width, height: newSize.height))
+                            context?.draw(nextPhoto.cgImage!, in: CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
                             
                             CVPixelBufferUnlockBaseAddress(managedPixelBuffer, [])
                             
@@ -179,7 +181,7 @@ final class AnimationManager {
             
             let frameProperties = [kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFDelayTime as String: frameDelay,
-                kCGImagePropertyGIFLoopCount as String: 0,
+                kCGImagePropertyGIFLoopCount as String: loopCount,
                 kCGImagePropertyColorModel as String: kCGImagePropertyColorModelRGB,
                 kCGImagePropertyGIFHasGlobalColorMap as String: true,
                 kCGImagePropertyDepth as String: 8,
@@ -199,9 +201,7 @@ final class AnimationManager {
                 onProgress?(Float(frameCount) / totalImages)
             }
             
-            let success = CGImageDestinationFinalize(destination)
-            
-            completion(success ? outputURL : nil)
+            completion(CGImageDestinationFinalize(destination) ? outputURL : nil)
         }
     }
 }

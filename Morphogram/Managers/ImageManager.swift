@@ -77,7 +77,6 @@ final class ImageManager {
     func loadImage(fileName: String, thumbnail: Bool = false, downSample: Bool = false) -> UIImage? {
         let cacheKey = (fileName + (thumbnail ? "_thumb" : "")) as NSString
         
-        // Önce cache'e bak
         if thumbnail {
             if let cachedImage = thumbnailCache.object(forKey: cacheKey) {
                 print("Thumbnail loaded:", cacheKey)
