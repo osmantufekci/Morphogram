@@ -1,13 +1,21 @@
 import UIKit
 
-enum Resolution {
-    case k4K, k1080p, k720p
+enum Resolution: CaseIterable {
+    case k720p, k1080p, k4K
     
     var size: CGSize {
         return switch self {
-        case .k4K: .init(width: 3840, height: 2160)
-        case .k1080p: .init(width: 1920, height: 1080)
-        case .k720p: .init(width: 1280, height: 720)
+        case .k4K: .init(width: 2160, height: 2880)
+        case .k1080p: .init(width: 1080, height: 1440)
+        case .k720p: .init(width: 720, height: 960)
+        }
+    }
+    
+    var title: String {
+        return switch self {
+        case .k4K: "4K"
+        case .k1080p: "1080p"
+        case .k720p: "720p"
         }
     }
     
@@ -26,16 +34,13 @@ final class ImageManager {
     private let fileManager = FileManager.default
     private let appGroupIdentifier = "group.com.Trionode.Morphogram"
     private let baseDirectory: URL
-    private var imageCache = NSCache<NSString, UIImage>()
     private var thumbnailCache = NSCache<NSString, UIImage>()
     private var isDir: UnsafeMutablePointer<ObjCBool>?
+    private var resolution: Resolution = .k4K
     
     private init() {
         baseDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        imageCache.countLimit = 100 // Maksimum 50 tam boyutlu görüntü
-        thumbnailCache.countLimit = 300 // Maksimum 300 thumbnail
-        imageCache.totalCostLimit = 250 * 1024 * 1024 // 250 MB
-        thumbnailCache.totalCostLimit = 150 * 1024 * 1024 // 150 MB
+        thumbnailCache.countLimit = 1000
     }
     
     func generateFileName(forProject projectId: String) -> String {
@@ -78,11 +83,6 @@ final class ImageManager {
                 print("Thumbnail loaded:", cacheKey)
                 return cachedImage
             }
-        } else {
-            if let cachedImage = imageCache.object(forKey: cacheKey) {
-                print("Cached Image loaded:", cacheKey, "size:", cachedImage.size)
-                return cachedImage
-            }
         }
         
         let fileURL = baseDirectory.appendingPathComponent(fileName)
@@ -91,27 +91,20 @@ final class ImageManager {
             return nil
         }
         
-        do {
-            let data = try Data(contentsOf: fileURL)
-            guard let image = UIImage(data: data) else { return nil }
-            
-            if downSample {
-                return downsample(imageAt: fileURL, to: .k4K)
-            } else if thumbnail {
-                let thumbnailSize = CGSize(width: 150, height: 150)
-                let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
-                thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
-                imageCache.setObject(image, forKey: fileName as NSString)
-                return thumbnailImage
-            } else {
-                print("Cache Image set:", cacheKey, image.size)
-                imageCache.setObject(image, forKey: cacheKey)
-                return image
-            }
-        } catch {
-            print("Görüntü yüklenirken hata: \(error)")
-            return nil
+        guard let image = UIImage(contentsOfFile: fileURL.path) else { return nil }
+        
+        if downSample {
+            return downsample(imageAt: fileURL, to: resolution)
+        } else if thumbnail {
+            let thumbnailSize = CGSize(width: 600, height: 600)
+            let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
+            thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
+            print("Cache Thumbnail set:", cacheKey, image.size)
+            print("Cache Image set:", fileName, image.size)
+            return thumbnailImage
         }
+        
+        return image
     }
     
     func loadImageAsync(fileName: String, thumbnail: Bool = true, downSample: Bool = false, completion: @escaping (UIImage) -> Void) {
@@ -147,5 +140,9 @@ final class ImageManager {
         let exists = fileManager.fileExists(atPath: fileURL.path, isDirectory: isDir)
         print("Fotoğraf kontrolü: \(fileName) - \(exists ? "Mevcut" : "Bulunamadı")")
         return exists
+    }
+    
+    func setResolution(_ resolution: Resolution) {
+        self.resolution = resolution
     }
 }

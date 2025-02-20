@@ -20,6 +20,20 @@ class PhotoViewController: UIViewController {
         loadImage()
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        DispatchQueue.main.async { [weak self] in
+            self?.unloadImage()
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        DispatchQueue.main.async { [weak self] in
+            self?.loadImage()
+        }
+    }
+    
     private func setupScrollView() {
         scrollView = UIScrollView()
         scrollView.delegate = self
@@ -39,7 +53,7 @@ class PhotoViewController: UIViewController {
     
     private func setupImageView() {
         imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFill
+        imageView.contentMode = .scaleAspectFit
         scrollView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -50,24 +64,19 @@ class PhotoViewController: UIViewController {
         ])
     }
     
+    private func unloadImage() {
+        self.imageView.image = nil
+    }
+    
     private func loadImage() {
         guard let fileName = fileName else { return }
         Task {
-            if let image = await loadImageFromFile(fileName: fileName) {
+            if let image = ImageManager.shared.loadImage(fileName: fileName) {
                 DispatchQueue.main.async {
                     self.imageView.image = image
                 }
             }
         }
-    }
-    
-    private func loadImageFromFile(fileName: String) async -> UIImage? {
-        // Bu fonksiyonu kendi image yükleme mantığınıza göre uyarlayın
-        // Örnek olarak FileManager kullanarak:
-        let fileManager = FileManager.default
-        let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let imagePath = documentsPath.appendingPathComponent(fileName)
-        return downsample(imageAt: imagePath, to: .k4K)
     }
 }
 

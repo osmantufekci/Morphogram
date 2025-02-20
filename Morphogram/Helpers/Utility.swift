@@ -15,9 +15,7 @@ func formatDate(_ date: Date) -> String {
 }
 
 func downsample(imageAt imageURL: URL,
-                to resolution: Resolution,
-                scale: CGFloat = UIScreen.main.scale) -> UIImage? {
-
+                to resolution: Resolution) -> UIImage? {
     // Create an CGImageSource that represent an image
     let imageSourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
     guard let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, imageSourceOptions) else {
@@ -25,7 +23,7 @@ func downsample(imageAt imageURL: URL,
     }
     
     // Calculate the desired dimension
-    let maxDimensionInPixels = max(resolution.size.width, resolution.size.height) * scale
+    let maxDimensionInPixels = max(resolution.size.width, resolution.size.height)
     
     // Perform downsampling
     let downsampleOptions = [

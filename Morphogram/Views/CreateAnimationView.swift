@@ -39,7 +39,7 @@ struct CreateAnimationView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isCreatingAnimation = false
     @State private var animationType: AnimationType = .video
-    @State private var frameRate: Double = 7.5
+    @State private var frameRate: Double = 5
     @State private var frameDelay: Double = 0.5
     @State private var exportURL: URL?
     @State private var showingExportSheet = false
@@ -47,11 +47,12 @@ struct CreateAnimationView: View {
     @State private var showingError = false
     @State private var currentPreviewIndex = 0
     @State private var previewTimer: Timer?
-    @State private var previewImages: [UIImage] = []
-    @State private var selectedPhotos: Set<String> = []
+    @State private var selectedPhotos: Array<String> = []
     @State private var watermarkPosition: WatermarkPosition = .center
     @State private var progress: Float = 0
     @State private var sortedPhotos: [ProjectPhoto] = []
+    @State private var resolution: Resolution = .k720p
+    @State private var currentPreviewImage: UIImage = UIImage()
     
     enum AnimationType: String, CaseIterable {
         case video = "Video"
@@ -61,34 +62,19 @@ struct CreateAnimationView: View {
     var body: some View {
         List {
             Section("Önizleme") {
-                if !previewImages.isEmpty {
-                    ZStack {
-                        ForEach(previewImages.indices, id: \.self) { index in
-                            Image(uiImage: previewImages[index])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 450)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .opacity(index == currentPreviewIndex ? 1 : 0)
-                        }
-                        
-                        WatermarkOverlay(position: watermarkPosition)
-                    }
-                    .animation(.default, value: currentPreviewIndex)
-                    .listRowInsets(EdgeInsets())
-                } else {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .frame(height: 300)
+                ZStack {
+                    Image(uiImage: currentPreviewImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 400)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    WatermarkOverlay(position: watermarkPosition)
                 }
                 
                 HStack {
                     Image(systemName: "info.circle")
-                    Text("Önizleme ile son çıktı arasında kalite farkı olabilir.")
+                    Text("Önizleme ile son çıktı arasında küçük farklar olabilir.")
                 }
                 .padding(.top, 4)
                 .font(.footnote)
@@ -106,7 +92,7 @@ struct CreateAnimationView: View {
                 if animationType == .video {
                     HStack {
                         Text("Yavaş")
-                        Slider(value: $frameRate, in: 5...10, step: 0.5) { _ in
+                        Slider(value: $frameRate, in: 1...10, step: 1) { _ in
                             startPreview()
                         }
                         Text("Hızlı")
@@ -122,6 +108,15 @@ struct CreateAnimationView: View {
                 }
             }
             .disabled(isCreatingAnimation)
+            
+            Section {
+                Picker("Çözünürlük", selection: $resolution) {
+                    ForEach(Resolution.allCases, id: \.self) { resolution in
+                        Text(resolution.title)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
             
             Section {
                 Button(action: {
@@ -140,16 +135,6 @@ struct CreateAnimationView: View {
                         Text("\(animationType.rawValue) Oluştur")
                     }
                 }
-
-                if animationType == .gif, !isCreatingAnimation {
-                    HStack {
-                        Image(systemName: "info.circle")
-                        Text("Dosya boyutu daha büyük olacaktır.")
-                    }
-                    .padding(.top, 4)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                }
                 
                 if isCreatingAnimation {
                     HStack {
@@ -163,32 +148,31 @@ struct CreateAnimationView: View {
             }
             .disabled(isCreatingAnimation)
             
-            Section("Filigran Konumu") {
-                Picker("Konum", selection: $watermarkPosition) {
-                    ForEach(WatermarkPosition.allCases, id: \.self) { position in
-                        position.image.tag(position)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-            .disabled(isCreatingAnimation)
+//            Section("Filigran Konumu") {
+//                Picker("Konum", selection: $watermarkPosition) {
+//                    ForEach(WatermarkPosition.allCases, id: \.self) { position in
+//                        position.image.tag(position)
+//                    }
+//                }
+//                .pickerStyle(.segmented)
+//            }
+//            .disabled(isCreatingAnimation)
             
             Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
-                        ForEach(sortedPhotos) { photo in
-                            if let fileName = photo.fileName {
+                        ForEach(sortedPhotos.indices, id: \.self) { index in
+                            if let fileName = sortedPhotos[index].fileName {
                                 ZStack(alignment: .topTrailing) {
-                                    AsyncImageView(fileName: fileName)
+                                    AsyncImageView(fileName: fileName, loadFullResolution: false)
                                         .frame(width: 80, height: 80)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                         .onTapGesture {
                                             if selectedPhotos.contains(fileName) {
-                                                selectedPhotos.remove(fileName)
+                                                selectedPhotos.removeAll(where: {$0 == fileName})
                                             } else {
-                                                selectedPhotos.insert(fileName)
+                                                selectedPhotos.insert(fileName, at: index)
                                             }
-                                            loadPreviewImages(loadThumbnail: true)
                                         }
                                     
                                     if selectedPhotos.contains(fileName) {
@@ -221,47 +205,32 @@ struct CreateAnimationView: View {
         }
         .task {
             sortedPhotos = project.photos.sorted { $0.createdAt < $1.createdAt }
-            selectedPhotos = Set(sortedPhotos.compactMap { $0.fileName })
-            loadPreviewImages()
+            selectedPhotos = sortedPhotos.compactMap { $0.fileName }
+            startPreview()
         }
         .onChange(of: animationType) { _, _ in
             startPreview()
         }
-        .onChange(of: previewImages) { oldValue, newValue in
-            if newValue != oldValue {
-                startPreview()
+        .onChange(of: resolution) { oldValue, newValue in
+            if oldValue != newValue {
+                ImageManager.shared.setResolution(newValue)
             }
         }
     }
 }
 
 extension CreateAnimationView {
-    private func loadPreviewImages(loadThumbnail: Bool = false) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            previewImages = sortedPhotos.compactMap { photo -> UIImage? in
-                guard let fileName = photo.fileName else { return nil }
-                guard selectedPhotos.isEmpty || selectedPhotos.contains(fileName) else { return nil }
-                return ImageManager.shared.loadImage(fileName: fileName, thumbnail: loadThumbnail, downSample: true)
-            }
-        }
-    }
-    
     private func startPreview() {
-        guard !previewImages.isEmpty else { return }
-        
         stopPreview()
         
         let interval = animationType == .video ? 1.0 / frameRate : (1.6 - frameDelay)
         
         previewTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             DispatchQueue.main.async {
-                withAnimation {
-                    currentPreviewIndex = (currentPreviewIndex + 1) % previewImages.count
-                }
+                currentPreviewIndex = (currentPreviewIndex + 1) % selectedPhotos.count
+                currentPreviewImage = ImageManager.shared.loadImage(fileName: sortedPhotos[currentPreviewIndex].fileName ?? "") ?? .init()
             }
         }
-        
-        RunLoop.current.add(previewTimer!, forMode: .common)
     }
     
     private func stopPreview() {
@@ -270,63 +239,37 @@ extension CreateAnimationView {
     }
     
     private func createAnimation() async {
-        guard !previewImages.isEmpty else { return }
+        guard !sortedPhotos.isEmpty else { return }
         
         isCreatingAnimation = true
         progress = 0
         
-        let images = await withTaskGroup(of: UIImage?.self) { group in
-            var loadedImages: [UIImage] = []
-            
-            for photo in sortedPhotos {
-                group.addTask {
-                    guard let fileName = photo.fileName,
-                          await self.selectedPhotos.contains(fileName) else { return nil }
-                    return ImageManager.shared.loadImage(fileName: fileName, downSample: true)
+        if animationType == .video {
+            AnimationManager.shared.createVideo(
+                from: selectedPhotos,
+                frameRate: Float(frameRate),
+                name: project.name,
+                resolution: resolution,
+                onProgress: { newProgress in
+                    progress = newProgress
                 }
+            ) { url in
+                handleExportResult(url)
             }
-            
-            for await image in group {
-                if let image = image {
-                    loadedImages.append(image)
+        } else {
+            AnimationManager.shared.createGIF(
+                from: [],
+                frameDelay: 1.6 - frameDelay,
+                name: project.name,
+                watermarkPosition: watermarkPosition,
+                onProgress: { newProgress in
+                    progress = newProgress
                 }
+            ) { url in
+                handleExportResult(url)
             }
-            
-            return loadedImages
         }
         
-        await MainActor.run {
-            if images.isEmpty {
-                handleExportResult(nil)
-                return
-            }
-            
-            if animationType == .video {
-                AnimationManager.shared.createVideo(
-                    from: images,
-                    frameRate: Float(frameRate),
-                    name: project.name,
-                    watermarkPosition: watermarkPosition,
-                    onProgress: { newProgress in
-                        progress = newProgress
-                    }
-                ) { url in
-                    handleExportResult(url)
-                }
-            } else {
-                AnimationManager.shared.createGIF(
-                    from: images,
-                    frameDelay: 1.6 - frameDelay,
-                    name: project.name,
-                    watermarkPosition: watermarkPosition,
-                    onProgress: { newProgress in
-                        progress = newProgress
-                    }
-                ) { url in
-                    handleExportResult(url)
-                }
-            }
-        }
     }
     
     private func handleExportResult(_ url: URL?) {
