@@ -100,16 +100,26 @@ struct CreateAnimationView: View {
                 } else {
                     HStack {
                         Text("Yavaş")
-                        Slider(value: $frameDelay, in: 0.1...1.5, step: 0.1) { _ in
+                        Slider(value: $frameDelay, in: 0.1...1.0, step: 0.1) { _ in
                             startPreview()
                         }
                         Text("Hızlı")
                     }
                 }
+                
+                if animationType == .gif {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                        Text("Videoya göre daha yüksek dosya boyutu")
+                    }
+                    .padding(.top, 4)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                }
             }
             .disabled(isCreatingAnimation)
             
-            Section {
+            Section("Çözünürlük") {
                 Picker("Çözünürlük", selection: $resolution) {
                     ForEach(Resolution.allCases, id: \.self) { resolution in
                         Text(resolution.title)
@@ -117,6 +127,7 @@ struct CreateAnimationView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            .disabled(isCreatingAnimation)
             
             Section {
                 Button(action: {
@@ -258,10 +269,10 @@ extension CreateAnimationView {
             }
         } else {
             AnimationManager.shared.createGIF(
-                from: [],
+                from: selectedPhotos,
                 frameDelay: 1.6 - frameDelay,
                 name: project.name,
-                watermarkPosition: watermarkPosition,
+                resolution: resolution,
                 onProgress: { newProgress in
                     progress = newProgress
                 }
