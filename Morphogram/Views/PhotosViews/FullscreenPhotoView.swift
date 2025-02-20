@@ -97,29 +97,18 @@ struct FullscreenPhotoView: View {
             // Alt kontrol alanı
             VStack(spacing: 15) {
                 HStack {
-                    Button(action: {
-                        if let _ = photos[currentIndex].fileName {
-                            showShareSheet = true
-                        }
-                    }) {
-                        VStack(spacing: 5) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title2)
-                        }
-                    }
                     
-                    Button(action: {
-                        withAnimation {
-                            showSettings.toggle()
-                        }
-                    }) {
-                        VStack(spacing: 5) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.title2)
-                                .foregroundColor(showSettings ? .primary : .blue)
-                        }
-                    }
-                    .hidden()
+//                    Button(action: {
+//                        withAnimation {
+//                            showSettings.toggle()
+//                        }
+//                    }) {
+//                        VStack(spacing: 5) {
+//                            Image(systemName: "slider.horizontal.3")
+//                                .font(.title2)
+//                                .foregroundColor(showSettings ? .primary : .blue)
+//                        }
+//                    }
                     
                     Spacer()
                     
@@ -152,6 +141,19 @@ struct FullscreenPhotoView: View {
                     }
                     Text(formatDate(photos[currentIndex].createdAt))
                         .font(.subheadline)
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: {
+                    if let _ = photos[currentIndex].fileName {
+                        showShareSheet = true
+                    }
+                }) {
+                    VStack(spacing: 5) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.title2)
+                    }
                 }
             }
         }
