@@ -84,9 +84,9 @@ final class AnimationManager {
             videoWriter.startSession(atSourceTime: CMTime.zero)
             assert(pixelBufferAdaptor.pixelBufferPool != nil)
             
-            let media_queue = DispatchQueue(__label: "mediaInputQueue", attr: nil)
+            let mediaQueue = DispatchQueue(__label: "mediaInputQueue", attr: nil)
             
-            videoWriterInput.requestMediaDataWhenReady(on: media_queue, using: { () -> Void in
+            videoWriterInput.requestMediaDataWhenReady(on: mediaQueue, using: { () -> Void in
                 let fps: Int32 = Int32(frameRate)
                 let frameDuration = CMTimeMake(value: 1, timescale: fps)
                 
@@ -95,7 +95,7 @@ final class AnimationManager {
                 
                 while (!chosenImages.isEmpty) {
                     if (videoWriterInput.isReadyForMoreMediaData) {
-                        guard let nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue}
+                        guard let nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue }
                         let lastFrameTime = CMTimeMake(value: frameCount, timescale: fps)
                         let presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration)
                         
@@ -141,7 +141,6 @@ final class AnimationManager {
                 }
                 videoWriterInput.markAsFinished()
                 videoWriter.finishWriting { () -> Void in
-                    print("FINISHED!!!!!")
                     completion(videoOutputURL)
                 }
             })

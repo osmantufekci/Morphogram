@@ -99,7 +99,7 @@ final class ImageManager {
             let thumbnailSize = CGSize(width: 600, height: 600)
             let thumbnailImage = image.preparingThumbnail(of: thumbnailSize) ?? image
             thumbnailCache.setObject(thumbnailImage, forKey: cacheKey)
-            print("Cache Thumbnail set:", cacheKey, image.size)
+            print("Cache Thumbnail set:", cacheKey, thumbnailSize)
             print("Cache Image set:", fileName, image.size)
             return thumbnailImage
         }
