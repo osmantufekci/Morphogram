@@ -96,6 +96,9 @@ extension Dashboard {
             modelContext.delete(photo)
         }
         
+        Task {
+            await CalendarManager.shared.removeAllEvents(forProject: project)
+        }
         // Projeyi sil
         modelContext.delete(project)
         
