@@ -234,8 +234,8 @@ extension CreateAnimationView {
     private func startPreview() {
         stopPreview()
         
-        let interval = animationType == .video ? 1.0 / frameRate : (1.6 - frameDelay)
-        
+        let interval = animationType == .video ? 1.0 / frameRate : (1.1 - frameDelay)
+        guard !selectedPhotos.isEmpty else { return }
         previewTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             DispatchQueue.main.async {
                 currentPreviewIndex = (currentPreviewIndex + 1) % selectedPhotos.count
