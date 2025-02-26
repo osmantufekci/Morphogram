@@ -7,72 +7,63 @@
 
 import SwiftUI
 
-private var pixelBufferCache: [CGSize: CVPixelBuffer] = [:] // Önbelleği tanımla
-
 extension UIImage {
-    func pixelBuffer(size: CGSize) -> CVPixelBuffer? {
-        if let cachedBuffer = pixelBufferCache[size] {
-            return cachedBuffer.copy() // Önbellekten kopyasını döndür (ÖNEMLİ)
+    func fixImageOrientation() -> UIImage? {
+        // Eğer görüntü yönelimi zaten doğruysa (.up), doğrudan döndür
+        if self.imageOrientation == .up {
+            return self
         }
-
-        var pixelBuffer: CVPixelBuffer?
-        let attrs = [kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
-                     kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue] as CFDictionary
-
-        let status = CVPixelBufferCreate(kCFAllocatorDefault,
-                                        Int(size.width),
-                                        Int(size.height),
-                                        kCVPixelFormatType_32ARGB,
-                                        attrs,
-                                        &pixelBuffer)
-
-        guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
-            return nil
+        
+        var transform = CGAffineTransform.identity
+        
+        switch self.imageOrientation {
+        case .down, .downMirrored:
+            transform = transform.translatedBy(x: self.size.width, y: self.size.height)
+            transform = transform.rotated(by: .pi)
+        case .left, .leftMirrored:
+            transform = transform.translatedBy(x: self.size.width, y: 0)
+            transform = transform.rotated(by: .pi / 2)
+        case .right, .rightMirrored:
+            transform = transform.translatedBy(x: 0, y: self.size.height)
+            transform = transform.rotated(by: -.pi / 2)
+        default:
+            break
         }
-
-        CVPixelBufferLockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
-                                width: Int(size.width),
-                                height: Int(size.height),
-                                bitsPerComponent: 8,
-                                bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
-
-        context?.draw(self.cgImage!, in: CGRect(origin: .zero, size: size))
-        CVPixelBufferUnlockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-
-        pixelBufferCache[size] = buffer // Önbelleğe ekle
-
-        return buffer.copy() // Oluşturulan buffer'ın kopyasını döndür (ÖNEMLİ)
-    }
-}
-
-extension CVPixelBuffer {
-    func copy() -> CVPixelBuffer? {
-        var copiedBuffer: CVPixelBuffer?
-        let attrs = [kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
-                     kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue] as CFDictionary
-
-        let status = CVPixelBufferCreate(kCFAllocatorDefault,
-                                        CVPixelBufferGetWidth(self),
-                                        CVPixelBufferGetHeight(self),
-                                        kCVPixelFormatType_32ARGB, // veya orijinal formatınız
-                                        attrs,
-                                        &copiedBuffer)
-
-        guard status == kCVReturnSuccess, let buffer = copiedBuffer else {
-            return nil
+        
+        switch self.imageOrientation {
+        case .upMirrored, .downMirrored:
+            transform = transform.translatedBy(x: self.size.width, y: 0)
+            transform = transform.scaledBy(x: -1, y: 1)
+        case .leftMirrored, .rightMirrored:
+            transform = transform.translatedBy(x: self.size.height, y: 0)
+            transform = transform.scaledBy(x: -1, y: 1)
+        default:
+            break
         }
-
-        CVPixelBufferLockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        CVPixelBufferLockBaseAddress(self, CVPixelBufferLockFlags(rawValue: 0)) // Kaynak buffer'ı da kilitle
-
-        memcpy(CVPixelBufferGetBaseAddress(buffer), CVPixelBufferGetBaseAddress(self), CVPixelBufferGetBytesPerRow(self) * CVPixelBufferGetHeight(self))
-
-        CVPixelBufferUnlockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        CVPixelBufferUnlockBaseAddress(self, CVPixelBufferLockFlags(rawValue: 0)) // Kilidi aç
-
-        return buffer
+        
+        // Düzeltilmiş görüntüyü oluştur
+        let ctx = CGContext(
+            data: nil,
+            width: Int(self.size.width),
+            height: Int(self.size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        
+        ctx.concatenate(transform)
+        
+        switch self.imageOrientation {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            ctx.draw(self.cgImage!, in: CGRect(x: 0, y: 0, width: self.size.height, height: self.size.width))
+        default:
+            ctx.draw(self.cgImage!, in: CGRect(x: 0, y: 0, width: self.size.width, height: self.size.height))
+        }
+        
+        let cgimg = ctx.makeImage()!
+        let img = UIImage(cgImage: cgimg)
+        
+        return img
     }
 }

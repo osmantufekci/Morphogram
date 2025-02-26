@@ -54,29 +54,29 @@ final class AnimationManager {
             }
         }
         
-        guard let videoWriter = try? AVAssetWriter(outputURL: videoOutputURL, fileType: AVFileType.mp4) else {
+        guard let videoWriter = try? AVAssetWriter(outputURL: videoOutputURL, fileType: .mp4) else {
             fatalError("AVAssetWriter error")
         }
         
         let outputSettings = [
             AVVideoCodecKey : AVVideoCodecType.h264,
-            AVVideoWidthKey : NSNumber(value: Float(outputSize.size.width)),
-            AVVideoHeightKey : NSNumber(value: Float(outputSize.size.height))
+            AVVideoWidthKey : outputSize.size.width,
+            AVVideoHeightKey : outputSize.size.height
         ] as [String : Any]
         
-        guard videoWriter.canApply(outputSettings: outputSettings, forMediaType: AVMediaType.video) else {
+        guard videoWriter.canApply(outputSettings: outputSettings, forMediaType: .video) else {
             fatalError("Negative : Can't apply the Output settings...")
         }
         
-        let videoWriterInput = AVAssetWriterInput(mediaType: AVMediaType.video, outputSettings: outputSettings)
-        let sourcePixelBufferAttributesDictionary = [
-            kCVPixelBufferPixelFormatTypeKey as String : NSNumber(value: kCVPixelFormatType_32ARGB),
-            kCVPixelBufferWidthKey as String: NSNumber(value: Float(outputSize.size.width)),
-            kCVPixelBufferHeightKey as String: NSNumber(value: Float(outputSize.size.height))
-        ]
+        let videoWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: outputSettings)
+        
         let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: videoWriterInput,
-            sourcePixelBufferAttributes: sourcePixelBufferAttributesDictionary
+            sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String : kCVPixelFormatType_32ARGB,
+                kCVPixelBufferCGImageCompatibilityKey as String: true,
+                kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+            ]
         )
         
         if videoWriter.canAdd(videoWriterInput) {
@@ -84,44 +84,54 @@ final class AnimationManager {
             videoWriter.add(videoWriterInput)
         }
         var chosenImages = images
+        let imageCount = Float(images.count)
         if videoWriter.startWriting() {
             videoWriter.startSession(atSourceTime: CMTime.zero)
             assert(pixelBufferAdaptor.pixelBufferPool != nil)
             
-            let mediaQueue = DispatchQueue(__label: "mediaInputQueue", attr: nil)
+            let mediaQueue = DispatchQueue(label: "mediaInputQueue")
             
-            videoWriterInput.requestMediaDataWhenReady(on: mediaQueue, using: { () -> Void in
+            videoWriterInput.requestMediaDataWhenReady(
+                on: mediaQueue,
+                using: {
                     let fps: Int32 = Int32(frameRate)
                     let frameDuration = CMTimeMake(value: 1, timescale: fps)
                     
                     var frameCount: Int64 = 0
                     var appendSucceeded = true
                     
-                while (!chosenImages.isEmpty) {
-                    if (videoWriterInput.isReadyForMoreMediaData) {
-                        guard let nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue }
-                        let lastFrameTime = CMTimeMake(value: frameCount, timescale: fps)
-                        let presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration)
-                        
-                        var pixelBuffer: CVPixelBuffer? = nil
-                        let status: CVReturn = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelBufferAdaptor.pixelBufferPool!, &pixelBuffer)
-
-                        if let pixelBuffer = pixelBuffer, status == 0 {
-                            let managedPixelBuffer = pixelBuffer
+                    while (!chosenImages.isEmpty) {
+                        if (videoWriterInput.isReadyForMoreMediaData) {
+                            guard var nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue }
+                            let lastFrameTime = CMTimeMake(value: frameCount, timescale: fps)
+                            let presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration)
                             
-                            CVPixelBufferLockBaseAddress(managedPixelBuffer, [])
+                            var pixelBuffer: CVPixelBuffer? = nil
+                            let status: CVReturn = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelBufferAdaptor.pixelBufferPool!, &pixelBuffer)
                             
-                            let data = CVPixelBufferGetBaseAddress(managedPixelBuffer)
-                            let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-                            let context = CGContext(
-                                data: data,
-                                width: Int(outputSize.size.width),
-                                height: Int(outputSize.size.height),
-                                bitsPerComponent: 8,
-                                bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer),
-                                space: rgbColorSpace,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-                            )
+                            if let pixelBuffer = pixelBuffer,
+                               status == 0 {
+                                let managedPixelBuffer = pixelBuffer
+                                
+                                CVPixelBufferLockBaseAddress(managedPixelBuffer, [])
+                                
+                                let data = CVPixelBufferGetBaseAddress(managedPixelBuffer)
+                                let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
+                                let context = CGContext(
+                                    data: data,
+                                    width: Int(outputSize.size.width),
+                                    height: Int(outputSize.size.height),
+                                    bitsPerComponent: 8,
+                                    bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer),
+                                    space: rgbColorSpace,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                                )
+                                
+                                autoreleasepool {
+                                    if let fixedPhoto = nextPhoto.fixImageOrientation() {
+                                        nextPhoto = fixedPhoto
+                                }
+                            }
                             
                             context?.clear(CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
                             
@@ -136,10 +146,12 @@ final class AnimationManager {
                         }
                     }
                     if !appendSucceeded {
-                        break
+                        onProgress?(0)
+                        return
                     }
                     frameCount += 1
-                    onProgress?(Float(frameCount) / Float(images.count))
+                    print("Progress:", Float(frameCount) / imageCount, "(\(frameCount) / \( imageCount) Images: \(chosenImages.count)")
+                    onProgress?(Float(frameCount) / imageCount)
                 }
                 videoWriterInput.markAsFinished()
                 videoWriter.finishWriting { () -> Void in
