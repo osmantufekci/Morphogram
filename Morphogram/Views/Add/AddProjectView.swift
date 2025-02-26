@@ -72,7 +72,7 @@ struct AddProjectView: View {
                         Text("günde bir")
                     }
                     
-                    if !customDays.isEmpty && !isCustomDaysValid {
+                    if !isCustomDaysValid {
                         Text("Lütfen 1-365 arası bir sayı girin")
                             .font(.caption)
                             .foregroundColor(.red)
