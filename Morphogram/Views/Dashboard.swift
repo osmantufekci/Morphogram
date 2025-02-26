@@ -99,6 +99,7 @@ extension Dashboard {
         Task {
             await CalendarManager.shared.removeAllEvents(forProject: project)
         }
+        NotificationManager.shared.cancelNotifications(for: project)
         // Projeyi sil
         modelContext.delete(project)
         

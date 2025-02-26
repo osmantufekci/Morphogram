@@ -17,6 +17,7 @@ class CalendarManager {
     }
     
     func addRecurringEventToCalendar(
+        project: Project,
         title: String,
         startDate: Date,
         frequency: Project.TrackingFrequency,
@@ -72,6 +73,7 @@ class CalendarManager {
         
         do {
             try eventStore.save(event, span: .futureEvents)
+            project.eventIdentifier = event.eventIdentifier
             return true
         } catch {
             print("Etkinlik ekleme hatası: \(error)")
@@ -92,8 +94,9 @@ class CalendarManager {
             calendars: [eventStore.defaultCalendarForNewEvents].compactMap { $0 }
         )
         
-        let existingEvents = eventStore.events(matching: predicate)
-            .filter { $0.title.contains(project.name) && $0.title.contains("📸") }
+        let existingEvents = eventStore.events(matching: predicate).filter { event in
+            event.eventIdentifier == project.eventIdentifier
+        }
         
         for event in existingEvents {
             do {

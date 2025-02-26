@@ -78,6 +78,25 @@ struct AddProjectView: View {
                             .foregroundColor(.red)
                     }
                 }
+                
+                HStack {
+                    Image(systemName: "info.circle")
+                    switch selectedFrequency {
+                    case .daily:
+                        Text("Her gün yeni bir fotoğraf eklemeniz beklenir.")
+                    case .weekly:
+                        Text("Haftada bir fotoğraf eklemeniz beklenir.")
+                    case .monthly:
+                        Text("Ayda bir fotoğraf eklemeniz beklenir.")
+                    case .flexible:
+                        Text("İstediğiniz zaman fotoğraf ekleyebilirsiniz.")
+                    case .custom:
+                        Text("\(customDays) günde bir fotoğraf eklemeniz beklenir.")
+                    }
+                }
+                .padding(.top, 4)
+                .font(.footnote)
+                .foregroundColor(.secondary)
             }
             
             Section {
@@ -100,11 +119,18 @@ struct AddProjectView: View {
                         .foregroundColor(.orange)
                 }
             }
+            .onChange(of: selectedFrequency) { _, newValue in
+                if newValue == .flexible {
+                    notificationsEnabled = false
+                    calendarEnabled = false
+                }
+            }
             
             Section {
                 Toggle("Takvime Ekle", isOn: $calendarEnabled)
                     .opacity(selectedFrequency != .flexible ? 1 : 0.5)
                     .disabled(selectedFrequency == .flexible)
+                    .padding(.vertical, 2)
                 
                 if calendarEnabled && selectedFrequency != .flexible {
                     DatePicker(
@@ -112,6 +138,7 @@ struct AddProjectView: View {
                         selection: $calendarStartDate,
                         displayedComponents: [.date, .hourAndMinute]
                     )
+                    .padding(.vertical, 2)
                 }
             } footer: {
                 if selectedFrequency == .flexible {
@@ -119,21 +146,6 @@ struct AddProjectView: View {
                         .foregroundColor(.orange)
                 } else {
                     Text("Fotoğraf çekme zamanları takviminize eklenecek.")
-                }
-            }
-            
-            Section("Bilgi") {
-                switch selectedFrequency {
-                case .daily:
-                    Text("Her gün yeni bir fotoğraf eklemeniz beklenir.")
-                case .weekly:
-                    Text("Haftada bir fotoğraf eklemeniz beklenir.")
-                case .monthly:
-                    Text("Ayda bir fotoğraf eklemeniz beklenir.")
-                case .flexible:
-                    Text("İstediğiniz zaman fotoğraf ekleyebilirsiniz.")
-                case .custom:
-                    Text("\(customDays) günde bir fotoğraf eklemeniz beklenir.")
                 }
             }
         }
@@ -202,12 +214,19 @@ struct AddProjectView: View {
             // Takvim etkinliğini güncelle
             if project.calendarEnabled {
                 Task {
-                    await CalendarManager.shared.addRecurringEventToCalendar(
+                    if await CalendarManager.shared.addRecurringEventToCalendar(
+                        project: project,
                         title: "📸 \(project.name) - Fotoğraf Çekimi",
                         startDate: calendarStartDate,
                         frequency: project.trackingFrequency,
                         notes: "Morphogram uygulaması tarafından oluşturuldu"
-                    )
+                    ) {
+                        try? modelContext.save()
+                    }
+                }
+            } else {
+                Task {
+                    await CalendarManager.shared.removeAllEvents(forProject: project)
                 }
             }
         } else {
@@ -228,12 +247,15 @@ struct AddProjectView: View {
             // Takvim etkinliğini oluştur
             if project.calendarEnabled {
                 Task {
-                    await CalendarManager.shared.addRecurringEventToCalendar(
+                    if await CalendarManager.shared.addRecurringEventToCalendar(
+                        project: project,
                         title: "📸 \(project.name) - Fotoğraf Çekimi",
                         startDate: calendarStartDate,
                         frequency: project.trackingFrequency,
                         notes: "Morphogram uygulaması tarafından oluşturuldu"
-                    )
+                    ) {
+                        try? modelContext.save()
+                    }
                 }
             }
         }

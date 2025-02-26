@@ -61,6 +61,7 @@ final class Project {
     var notificationsEnabled: Bool
     var calendarEnabled: Bool
     var guideType: GuideType?
+    var eventIdentifier: String? = nil
     
     init(name: String, trackingFrequency: TrackingFrequency = .flexible, notificationsEnabled: Bool = true, calendarEnabled: Bool = false, guideType: GuideType? = nil) {
         self.id = UUID().uuidString
