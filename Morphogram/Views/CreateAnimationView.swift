@@ -54,6 +54,11 @@ struct CreateAnimationView: View {
     @State private var resolution: Resolution = .k720p
     @State private var currentPreviewImage: UIImage = UIImage()
     
+    private var animationDuration: Double {
+        let photoCount = Double(selectedPhotos.count)
+        return animationType == .video ? photoCount / frameRate : photoCount * (1.1 - frameDelay)
+    }
+    
     enum AnimationType: String, CaseIterable {
         case video = "Video"
         case gif = "GIF"
@@ -65,9 +70,9 @@ struct CreateAnimationView: View {
                 ZStack {
                     Image(uiImage: currentPreviewImage)
                         .resizable()
-                        .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .frame(height: 400)
+                        .scaledToFit()
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     WatermarkOverlay(position: watermarkPosition)
                 }
@@ -75,6 +80,14 @@ struct CreateAnimationView: View {
                 HStack {
                     Image(systemName: "info.circle")
                     Text("Önizleme ile son çıktı arasında küçük farklar olabilir.")
+                }
+                .padding(.top, 4)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                
+                HStack {
+                    Image(systemName: "clock")
+                    Text(String(format: "Tahmini süre: %.1f saniye", animationDuration))
                 }
                 .padding(.top, 4)
                 .font(.footnote)
