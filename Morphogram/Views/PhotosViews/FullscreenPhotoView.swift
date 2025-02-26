@@ -173,7 +173,10 @@ struct FullscreenPhotoView: View {
             if let project = photos[currentIndex].project, let fileName = photos[currentIndex].fileName {
                 ShareSheet(
                     activityItems: [CustomActivityItemSource(
-                        url: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(fileName),
+                        url: FileManager.default.urls(
+                            for: .documentDirectory,
+                            in: .userDomainMask
+                        ).first!.appendingPathComponent(fileName),
                         projectName: project.name
                     )]
                 )
