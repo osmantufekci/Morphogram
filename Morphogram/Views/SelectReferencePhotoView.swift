@@ -51,7 +51,7 @@ struct SelectReferencePhotoView: View {
                         VStack(alignment: .leading) {
                             Text("Kullanma")
                                 .font(.headline)
-                                .tint(.red)
+                                .tint(.pink)
                         }
                     }
                 }

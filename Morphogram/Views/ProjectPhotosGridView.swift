@@ -136,7 +136,7 @@ struct ProjectPhotosGridView: View {
                                     }) {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.title2)
-                                            .foregroundColor(.red)
+                                            .foregroundColor(.pink)
                                             .background(Color.white)
                                             .clipShape(Circle())
                                     }

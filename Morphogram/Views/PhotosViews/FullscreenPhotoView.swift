@@ -136,7 +136,7 @@ struct FullscreenPhotoView: View {
                         VStack(spacing: 5) {
                             Image(systemName: "trash")
                                 .font(.title2)
-                                .foregroundColor(.red)
+                                .foregroundColor(.pink)
                         }
                     }
                 }

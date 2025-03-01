@@ -74,7 +74,7 @@ struct CameraView: View {
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 64))
-                                .foregroundColor(.red)
+                                .foregroundColor(.pink)
                         }
                         
                         Button(action: {
