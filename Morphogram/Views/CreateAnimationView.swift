@@ -195,7 +195,7 @@ struct CreateAnimationView: View {
                                             if selectedPhotos.contains(fileName) {
                                                 selectedPhotos.removeAll(where: {$0 == fileName})
                                             } else {
-                                                selectedPhotos.insert(fileName, at: index)
+                                                selectedPhotos.safeInsert(fileName, at: index)
                                             }
                                         }
                                     
@@ -248,9 +248,9 @@ extension CreateAnimationView {
         stopPreview()
         
         let interval = animationType == .video ? 1.0 / frameRate : (1.1 - frameDelay)
-        guard !selectedPhotos.isEmpty else { return }
         previewTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             DispatchQueue.main.async {
+                guard !selectedPhotos.isEmpty else { return }
                 currentPreviewIndex = (currentPreviewIndex + 1) % selectedPhotos.count
                 currentPreviewImage = ImageManager.shared.loadImage(fileName: sortedPhotos[currentPreviewIndex].fileName ?? "") ?? .init()
             }
