@@ -6,8 +6,9 @@
 //
 import LinkPresentation
 import SwiftUI
+import AVFoundation
 
-class CustomActivityItemSource: NSObject, UIActivityItemSource {
+final class CustomActivityItemSource: NSObject, UIActivityItemSource {
     let url: URL
     let projectName: String
     var tempFileURL: URL?
@@ -23,7 +24,7 @@ class CustomActivityItemSource: NSObject, UIActivityItemSource {
     }
     
     func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
-        getTemporaryURL()
+        getTemporaryURL() ?? url
     }
     
     func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
@@ -36,9 +37,13 @@ class CustomActivityItemSource: NSObject, UIActivityItemSource {
     
     func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
         let metadata = LPLinkMetadata()
-        metadata.iconProvider = NSItemProvider(contentsOf: self.tempFileURL!)
+        if let tempFileURL {
+            metadata.iconProvider = NSItemProvider(contentsOf: tempFileURL)
+        } else {
+            metadata.iconProvider = NSItemProvider(object: getThumbnailImage(forUrl: url))
+        }
         metadata.title = "Morphogram"
-        metadata.originalURL = URL(fileURLWithPath: "From '\(projectName)' · \(ByteCountFormatter().string(fromByteCount: Int64(try! Data(contentsOf: self.tempFileURL!).count)))")
+        metadata.originalURL = URL(fileURLWithPath: "From '\(projectName)' · \(ByteCountFormatter().string(fromByteCount: Int64(try! Data(contentsOf: self.tempFileURL ?? url).count)))")
         return metadata
     }
     
@@ -84,16 +89,27 @@ class CustomActivityItemSource: NSObject, UIActivityItemSource {
     
         return nil
     }
+    
+    func getThumbnailImage(forUrl url: URL) -> UIImage {
+        let asset: AVAsset = AVURLAsset(url: url)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        
+        do {
+            let thumbnailImage = try imageGenerator.copyCGImage(at: CMTimeMake(value: 1, timescale: 60), actualTime: nil)
+            return UIImage(cgImage: thumbnailImage)
+        } catch let error {
+            print(error)
+        }
+        
+        return UIImage()
+    }
 }
 
 struct ShareSheet: UIViewControllerRepresentable {
     let activityItems: [Any]
     
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        guard let items = (activityItems as? [CustomActivityItemSource])?.compactMap({$0.url}) else {
-            return UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-        }
-        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
         return controller
     }
     
