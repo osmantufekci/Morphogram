@@ -12,8 +12,13 @@ struct ProjectPhotosGridView: View {
     let project: Project
     @State private var selectedPhotoIndex: Int?
     @State private var showCamera = false
+    @State private var showImagePicker = false
+    @State private var showAddSheet = false
     @State private var isEditing = false
     @State private var itemSize: CGSize = .zero
+    @State private var isLoading = false
+    @State private var progress: Float = 0
+    @State private var totalPhotos: Int = 0
     private static let initialGridCount = 3
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var router: NavigationManager
@@ -33,10 +38,10 @@ struct ProjectPhotosGridView: View {
                         
                         if !isEditing {
                             Button(action: {
-                                showCamera = true
+                                showAddSheet = true
                             }) {
                                 VStack {
-                                    Image(systemName: "camera.fill")
+                                    Image(systemName: "plus.circle.fill")
                                         .frame(width: project.photos.isEmpty ? 125 : itemSize.width, height: project.photos.isEmpty ? 125 : itemSize.width)
                                         .font(.system(size: 44))
                                         .foregroundColor(.accentColor)
@@ -162,9 +167,6 @@ struct ProjectPhotosGridView: View {
                         .disabled(project.photos.isEmpty)
                     }
                 }
-                .fullScreenCover(isPresented: $showCamera) {
-                    CameraView(project: project)
-                }
             }
             
             VStack {
@@ -188,6 +190,67 @@ struct ProjectPhotosGridView: View {
                     .padding(.bottom, 20)
                 }
             }
+            
+            if isLoading {
+                VStack(spacing: 16) {
+                    ProgressView(value: progress, total: 1.0)
+                        .progressViewStyle(.linear)
+                        .frame(width: 200)
+                    Text("Fotoğraflar Yükleniyor...")
+                        .font(.caption)
+                    Text("\(Int(progress * 100))%")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(12)
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            NavigationView {
+                List {
+                    Button(action: {
+                        showCamera = true
+                        showAddSheet = false
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                            Text("Kameradan Çek")
+                        }
+                    }
+                    
+                    Button(action: {
+                        showImagePicker = true
+                        showAddSheet = false
+                    }) {
+                        HStack {
+                            Image(systemName: "photo.fill")
+                            Text("Galeriden Seç")
+                        }
+                    }
+                }
+                .navigationTitle("Fotoğraf Ekle")
+                .navigationBarTitleDisplayMode(.inline)
+                .presentationDetents([.height(150)])
+            }
+        }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker { images, total in
+                if let images = images {
+                    isLoading = true
+                    totalPhotos = total
+                    
+                    Task {
+                        await processImages(images: images)
+                        isLoading = false
+                        progress = 0
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraView(project: project)
         }
     }
     
@@ -207,5 +270,37 @@ struct ProjectPhotosGridView: View {
         modelContext.delete(photo)
         
         try? modelContext.save()
+    }
+    
+    private func processImages(images: [UIImage]) async {
+        for (index, image) in images.enumerated() {
+            await MainActor.run {
+                progress = Float(index + 1) / Float(totalPhotos)
+            }
+            
+            let photo = ProjectPhoto()
+            let fileName = ImageManager.shared.generateFileName(forProject: project.id)
+            
+            if ImageManager.shared.saveImage(image, withFileName: fileName) {
+                await MainActor.run {
+                    photo.fileName = fileName
+                    photo.project = project
+                    project.photos.append(photo)
+                    project.lastPhotoDate = Date()
+                    modelContext.insert(photo)
+                }
+            }
+        }
+        
+        do {
+            try await MainActor.run {
+                try modelContext.save()
+                if project.notificationsEnabled && project.trackingFrequency != .flexible {
+                    NotificationManager.shared.scheduleNotification(for: project)
+                }
+            }
+        } catch {
+            print("Fotoğraflar kaydedilirken hata oluştu: \(error)")
+        }
     }
 }
