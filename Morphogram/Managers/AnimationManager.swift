@@ -35,6 +35,7 @@ final class AnimationManager {
         frameRate: Float = 2.0,
         name: String,
         resolution outputSize: Resolution,
+        watermarkPosition: WatermarkPosition = .center,
         onProgress: ((Float) -> Void)? = nil,
         completion: @escaping (URL?) -> Void
     ) {
@@ -166,6 +167,7 @@ final class AnimationManager {
         frameDelay: Double = 0.5,
         name: String,
         resolution outputSize: Resolution,
+        watermarkPosition: WatermarkPosition = .center,
         loopCount: Int = 0,
         onProgress: ((Float) -> Void)? = nil,
         completion: @escaping (URL?) -> Void
