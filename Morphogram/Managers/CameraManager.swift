@@ -215,11 +215,11 @@ struct CameraPreview: UIViewRepresentable {
 
 struct ReferencePhotoOverlay: View {
     let image: UIImage?
-    @State private var sliderValue: Double = 0.4
+    @Binding var sliderValue: Double
     
     var body: some View {
         if let image {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
                 VStack {
                     Image(uiImage: image)
                         .resizable()
@@ -227,15 +227,6 @@ struct ReferencePhotoOverlay: View {
                 }
                 .frame(maxWidth: .infinity)
                 .opacity(min(max(sliderValue, 0.2), 0.6))
-                
-                VStack {
-                    Spacer()
-                    Slider(value: $sliderValue, in: 0...1)
-                        .frame(maxWidth: 100, maxHeight: 50)
-                        .tint(.white)
-                        .padding(.horizontal)
-                }
-                .frame(maxWidth: .infinity, maxHeight: 100, alignment: .trailing)
             }
         }
     }
