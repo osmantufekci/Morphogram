@@ -162,7 +162,7 @@ struct ProjectPhotosGridView: View {
                                 isEditing.toggle()
                             }
                         }) {
-                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil.circle.fill")
+                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil.circle")
                         }
                         .disabled(project.photos.isEmpty)
                     }
