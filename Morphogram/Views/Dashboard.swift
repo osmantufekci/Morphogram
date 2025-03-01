@@ -11,8 +11,12 @@ struct Dashboard: View {
             ZStack {
                 VStack {
                     if allProjects.isEmpty {
-                        Text("Hiç proje oluşturulmadı.")
+                        Spacer()
+                        Text("Henüz hiç projen yok.")
                             .font(.title)
+                        Text("Başlamak için yeni proje oluşturabilirsin")
+                            .font(.title2)
+                        Spacer()
                         Button("Yeni Proje Ekle") {
                             router.navigate(AddProjectView())
                         }
@@ -56,28 +60,6 @@ struct Dashboard: View {
                             .listRowSeparator(.hidden)
                         }
                         .listStyle(.plain)
-                    }
-                }
-                
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            router.navigate(AddPhotoView())
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
-                        }
-                        .opacity(allProjects.isEmpty ? 0 : 1)
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
                     }
                 }
             }

@@ -26,7 +26,7 @@ struct AddProjectView: View {
     
     init(project: Project? = nil) {
         self.existingProject = project
-        _projectName = State(initialValue: project?.name ?? "w")
+        _projectName = State(initialValue: project?.name ?? "")
         _selectedFrequency = State(initialValue: project?.trackingFrequency ?? .daily)
         _notificationsEnabled = State(initialValue: project?.notificationsEnabled ?? false)
         _calendarEnabled = State(initialValue: project?.calendarEnabled ?? false)
