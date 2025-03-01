@@ -202,7 +202,7 @@ struct CameraPreview: UIViewRepresentable {
         let view = CameraPreviewView()
         view.backgroundColor = .black
         view.previewLayer.session = session
-        view.previewLayer.videoGravity = .resizeAspect
+        view.previewLayer.videoGravity = .resizeAspectFill
         return view
     }
     
@@ -219,14 +219,13 @@ struct ReferencePhotoOverlay: View {
     
     var body: some View {
         if let image {
-            ZStack {
-                VStack {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                }
-                .frame(maxWidth: .infinity)
-                .opacity(min(max(sliderValue, 0.2), 0.6))
+            GeometryReader { geo in
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .opacity(min(max(sliderValue, 0.2), 0.6))
             }
         }
     }

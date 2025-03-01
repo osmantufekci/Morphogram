@@ -48,6 +48,7 @@ struct CameraView: View {
     @State private var flashMode: FlashMode = .auto
     @State private var isScreenFlashActive = false
     @State private var originalBrightness: CGFloat = UIScreen.main.brightness
+    @State private var imageOpacity: Double = 0.4
     
     init(project: Project) {
         self.project = project
@@ -63,7 +64,8 @@ struct CameraView: View {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
                     
                     HStack(spacing: 50) {
                         Button(action: {
@@ -73,7 +75,7 @@ struct CameraView: View {
                             UIScreen.main.brightness = originalBrightness
                         }) {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 64))
+                                .font(.system(size: 60))
                                 .foregroundColor(.pink)
                         }
                         
@@ -89,151 +91,145 @@ struct CameraView: View {
                             }
                         }) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 64))
+                                .font(.system(size: 60))
                                 .foregroundColor(.green)
                         }
                     }
-                    .frame(maxHeight: 65)
+                    .frame(maxHeight: 150)
                 }
                 .background(Color.black)
             } else {
                 // Kamera önizleme ve kontroller
                 VStack(spacing: 0) {
                     ZStack {
-                        // Kamera önizleme
                         CameraPreview(session: cameraManager.session)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         
                         if let referencePhoto = selectedReferencePhoto,
                            let fileName = referencePhoto.fileName,
                            let image = ImageManager.shared.loadImage(fileName: fileName) {
-                            ReferencePhotoOverlay(image: image)
+                            ReferencePhotoOverlay(image: image, sliderValue: $imageOpacity)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                         
-                        GuideOverlay(guideType: selectedGuide)
+                        if selectedGuide != .none {
+                            GuideOverlay(guideType: selectedGuide)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                         
-                        // Ekran flash efekti
                         if isScreenFlashActive {
                             Rectangle()
                                 .fill(Color.white)
                                 .edgesIgnoringSafeArea(.all)
                                 .transition(.opacity)
                         }
-                        
-                        // Üst kontroller
-                        VStack {
-                            HStack {
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title)
-                                        .foregroundColor(.white)
-                                }
-                                
-                                Spacer()
-                            }
-                            .padding()
-                            
-                            Spacer()
-                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    // Alt kamera kontrolleri
-                    HStack(spacing: 20) {
-                        Menu {
-                            Button("3x3") {
-                                selectedGuide = .grid3x3
-                            }
-                            Button("5x5") {
-                                selectedGuide = .grid5x5
-                            }
-                            Button("Oval") {
-                                selectedGuide = .oval
-                            }
-                            Button("None") {
-                                selectedGuide = .none
-                            }
-                        } label: {
-                            Image(systemName: selectedGuide == .none ? "grid.circle" : "grid.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .shadow(radius: 4)
+                    VStack(spacing: 0) {
+                        HStack {
+                            Spacer()
+                            Slider(value: $imageOpacity, in: 0...1)
+                                .frame(maxWidth: 100, maxHeight: 40)
+                                .tint(.white)
+                                .padding(.horizontal)
                         }
                         
-                        Button(action: {
-                            showingReferencePhotoSelection = true
-                        }) {
-                            Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .shadow(radius: 4)
-                        }
-                        .opacity(project.photos.isEmpty ? 0 : 1)
-                        .disabled(project.photos.isEmpty ? true : false)
-                        
-                        Button(action: {
-                            if cameraManager.currentPosition == .front && flashMode != .off {
-                                withAnimation {
-                                    isScreenFlashActive = true
-                                    originalBrightness = UIScreen.main.brightness
-                                    UIScreen.main.brightness = 1.0
+                        // Alt kamera kontrolleri
+                        HStack(spacing: 20) {
+                            Button(action: {
+                                showingReferencePhotoSelection = true
+                            }) {
+                                Image(systemName: selectedReferencePhoto == nil ? "photo.stack" : "photo.stack.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
+                            }
+                            .opacity(project.photos.isEmpty ? 0 : 1)
+                            .disabled(project.photos.isEmpty ? true : false)
+                            
+                            Menu {
+                                Button("3x3") {
+                                    selectedGuide = .grid3x3
                                 }
+                                Button("5x5") {
+                                    selectedGuide = .grid5x5
+                                }
+                                Button("Oval") {
+                                    selectedGuide = .oval
+                                }
+                                Button("None") {
+                                    selectedGuide = .none
+                                }
+                            } label: {
+                                Image(systemName: selectedGuide == .none ? "grid.circle" : "grid.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
                             }
                             
-                            cameraManager.takePhoto { result in
-                                if cameraManager.currentPosition == .front {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                        withAnimation {
-                                            isScreenFlashActive = false
-                                        }
+                            Button(action: {
+                                if cameraManager.currentPosition == .front && flashMode != .off {
+                                    withAnimation {
+                                        isScreenFlashActive = true
+                                        originalBrightness = UIScreen.main.brightness
+                                        UIScreen.main.brightness = 1.0
                                     }
                                 }
                                 
-                                switch result {
-                                case .success(let image):
-                                    capturedImage = image
-                                    showingPreview = true
-                                case .failure(let error):
-                                    errorMessage = error.localizedDescription
-                                    showingError = true
-                                    UIScreen.main.brightness = originalBrightness
+                                cameraManager.takePhoto { result in
+                                    if cameraManager.currentPosition == .front {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                            withAnimation {
+                                                isScreenFlashActive = false
+                                            }
+                                        }
+                                    }
+                                    
+                                    switch result {
+                                    case .success(let image):
+                                        capturedImage = image
+                                        showingPreview = true
+                                    case .failure(let error):
+                                        errorMessage = error.localizedDescription
+                                        showingError = true
+                                        UIScreen.main.brightness = originalBrightness
+                                    }
                                 }
+                            }) {
+                                Image(systemName: "camera.circle.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
                             }
-                        }) {
-                            Image(systemName: "camera.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(.white)
-                                .shadow(radius: 4)
-                        }
-                        
-                        Button(action: {
-                            switch flashMode {
-                            case .auto:
-                                flashMode = .on
-                            case .on:
-                                flashMode = .off
-                            case .off:
-                                flashMode = .auto
+                            
+                            Button(action: {
+                                switch flashMode {
+                                case .auto:
+                                    flashMode = .on
+                                case .on:
+                                    flashMode = .off
+                                case .off:
+                                    flashMode = .auto
+                                }
+                            }) {
+                                Image(systemName: flashMode.systemImageName)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
                             }
-                        }) {
-                            Image(systemName: flashMode.systemImageName)
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .shadow(radius: 4)
+                            
+                            Button(action: {
+                                cameraManager.switchCamera()
+                            }) {
+                                Image(systemName: "camera.rotate.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
+                            }
                         }
-                        
-                        Button(action: {
-                            cameraManager.switchCamera()
-                        }) {
-                            Image(systemName: "camera.rotate.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .shadow(radius: 4)
-                        }
+                        .padding(.bottom)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: 65)
-                    .background(.black)
-                    .padding(.horizontal)
                 }
             }
         }
