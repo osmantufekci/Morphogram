@@ -7,18 +7,19 @@
 import SwiftUI
 
 struct FullscreenPhotoView: View {
-    let photos: [ProjectPhoto]
     let initialIndex: Int
     @State private var currentIndex: Int
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
     @State private var showSettings = false
+    @State private var photos: [ProjectPhoto]
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var router: NavigationManager
     
     var onDelete: ((ProjectPhoto) -> Void)?
     
     init(photos: [ProjectPhoto], initialIndex: Int, onDelete: ((ProjectPhoto) -> Void)? = nil) {
-        self.photos = photos
+        self._photos = State(initialValue: photos)
         self.initialIndex = initialIndex
         self._currentIndex = State(initialValue: initialIndex)
         self.onDelete = onDelete
@@ -27,10 +28,22 @@ struct FullscreenPhotoView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Fotoğraf görüntüleyici
-            PhotoPageViewController(
-                photos: photos,
-                currentIndex: $currentIndex
-            )
+            TabView(selection: $currentIndex) {
+                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                    LazyView {
+                        AsyncImageView(fileName: photo.fileName ?? "", downSampled: true)
+                            .scaledToFit()
+                    }
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .indexViewStyle(.page(backgroundDisplayMode: .never))
+            .background(.black)
+            // Lazy loading için
+            .onAppear {
+                UITableView.appearance().isPrefetchingEnabled = true
+            }
             .clipShape(
                 .rect(
                     bottomLeadingRadius: 15,
@@ -165,6 +178,13 @@ struct FullscreenPhotoView: View {
             Button("Sil", role: .destructive) {
                 if currentIndex < photos.count {
                     onDelete?(photos[currentIndex])
+                    photos.remove(at: currentIndex)
+                    
+                    if photos.isEmpty {
+                        dismiss()
+                    } else if currentIndex >= photos.count {
+                        currentIndex = photos.count - 1
+                    }
                 }
             }
             Button("İptal", role: .cancel) {}
@@ -182,5 +202,17 @@ struct FullscreenPhotoView: View {
                 )
             }
         }
+    }
+}
+
+struct LazyView<Content: View>: View {
+    let build: () -> Content
+    
+    init(_ build: @escaping () -> Content) {
+        self.build = build
+    }
+    
+    var body: Content {
+        build()
     }
 }
