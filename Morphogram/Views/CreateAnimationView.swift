@@ -77,19 +77,17 @@ struct CreateAnimationView: View {
                     WatermarkOverlay(position: watermarkPosition)
                 }
                 
-                HStack {
-                    Image(systemName: "info.circle")
-                    Text("Önizleme ile son çıktı arasında küçük farklar olabilir.")
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Image(systemName: "clock")
+                        Text(String(format: "Süre: %.1f saniye", animationDuration))
+                    }
+                    
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text("Önizleme ile son çıktı arasında farklar olabilir.")
+                    }
                 }
-                .padding(.top, 4)
-                .font(.footnote)
-                .foregroundColor(.secondary)
-                
-                HStack {
-                    Image(systemName: "clock")
-                    Text(String(format: "Tahmini süre: %.1f saniye", animationDuration))
-                }
-                .padding(.top, 4)
                 .font(.footnote)
                 .foregroundColor(.secondary)
             }
