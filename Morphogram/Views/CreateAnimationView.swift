@@ -156,9 +156,20 @@ struct CreateAnimationView: View {
                         }
                         .frame(maxWidth: .infinity)
                     } else {
-                        Text("\(animationType.rawValue) Oluştur")
+                        VStack(alignment: .leading) {
+                            Text("\(animationType.rawValue) Oluştur")
+                            if selectedPhotos.count < 2 {
+                                HStack {
+                                    Image(systemName: "info.circle")
+                                    Text("En az 2 fotoğraf gereklidir")
+                                }
+                                .padding(.top, 4)
+                                .font(.footnote)
+                                .foregroundColor(.pink)
+                            }
+                        }
                     }
-                }
+                }.disabled(selectedPhotos.count < 2)
                 
                 if isCreatingAnimation {
                     HStack {
