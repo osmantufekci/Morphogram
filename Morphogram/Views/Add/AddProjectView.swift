@@ -66,11 +66,8 @@ struct AddProjectView: View {
                 }
                 
                 if showingCustomDaysInput {
-                    HStack {
-                        TextField("Gün sayısı", text: $customDays)
-                            .keyboardType(.numberPad)
-                        Text("günde bir")
-                    }
+                    TextField("Gün sayısı", text: $customDays)
+                        .keyboardType(.numberPad)
                     
                     if !isCustomDaysValid {
                         Text("Lütfen 1-365 arası bir sayı girin")
@@ -136,6 +133,7 @@ struct AddProjectView: View {
                     DatePicker(
                         "Başlangıç Tarihi",
                         selection: $calendarStartDate,
+                        in: .now...,
                         displayedComponents: [.date, .hourAndMinute]
                     )
                     .padding(.vertical, 2)
