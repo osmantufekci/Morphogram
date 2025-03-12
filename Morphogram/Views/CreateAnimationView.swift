@@ -280,7 +280,7 @@ extension CreateAnimationView {
             DispatchQueue.main.async {
                 guard !selectedPhotos.isEmpty else { return }
                 currentPreviewIndex = (currentPreviewIndex + 1) % selectedPhotos.count
-                currentPreviewImage = ImageManager.shared.loadImage(fileName: sortedPhotos[currentPreviewIndex].fileName ?? "") ?? .init()
+                currentPreviewImage = ImageManager.shared.loadImage(fileName: selectedPhotos[currentPreviewIndex]) ?? .init()
             }
         }
     }
