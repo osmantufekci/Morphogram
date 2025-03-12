@@ -31,10 +31,6 @@ final class CustomActivityItemSource: NSObject, UIActivityItemSource {
         return projectName
     }
     
-    func activityViewController(_ activityViewController: UIActivityViewController, dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?) -> String {
-        return url.pathExtension == "gif" ? "com.compuserve.gif" : "public.mpeg-4"
-    }
-    
     func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
         let metadata = LPLinkMetadata()
         if let tempFileURL {
