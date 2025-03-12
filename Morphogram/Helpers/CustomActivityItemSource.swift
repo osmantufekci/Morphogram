@@ -20,11 +20,11 @@ final class CustomActivityItemSource: NSObject, UIActivityItemSource {
     }
     
     func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
-        getPlaceHolderImage() ?? url
+        url
     }
     
     func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
-        getTemporaryURL() ?? url
+        url
     }
     
     func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
@@ -33,13 +33,13 @@ final class CustomActivityItemSource: NSObject, UIActivityItemSource {
     
     func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
         let metadata = LPLinkMetadata()
-        if let tempFileURL {
+        if let tempFileURL = getTemporaryURL() {
             metadata.iconProvider = NSItemProvider(contentsOf: tempFileURL)
         } else {
             metadata.iconProvider = NSItemProvider(object: getThumbnailImage(forUrl: url))
         }
         metadata.title = "Morphogram"
-        metadata.originalURL = URL(fileURLWithPath: "From '\(projectName)' · \(ByteCountFormatter().string(fromByteCount: Int64(try! Data(contentsOf: self.tempFileURL ?? url).count)))")
+        metadata.originalURL = URL(fileURLWithPath: "From '\(projectName)' · \(ByteCountFormatter().string(fromByteCount: Int64(try! Data(contentsOf: url).count)))")
         return metadata
     }
     

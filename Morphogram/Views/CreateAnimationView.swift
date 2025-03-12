@@ -36,6 +36,7 @@ enum WatermarkPosition: String, CaseIterable {
 
 struct CreateAnimationView: View {
     let project: Project
+    let frameDelayConstant = 1.1
     @Environment(\.dismiss) private var dismiss
     @State private var isCreatingAnimation = false
     @State private var animationType: AnimationType = .video
@@ -58,7 +59,7 @@ struct CreateAnimationView: View {
     
     private var animationDuration: Double {
         let photoCount = Double(selectedPhotos.count)
-        return animationType == .video ? (photoCount / frameRate) * Double(loopCount) : (photoCount * (1.1 - frameDelay)) * Double(loopCount)
+        return animationType == .video ? (photoCount / frameRate) * Double(loopCount) : (photoCount * (frameDelayConstant - frameDelay)) * Double(loopCount)
     }
     
     enum AnimationType: String, CaseIterable {
@@ -274,7 +275,7 @@ extension CreateAnimationView {
     private func startPreview() {
         stopPreview()
         
-        let interval = animationType == .video ? 1.0 / frameRate : (1.1 - frameDelay)
+        let interval = animationType == .video ? 1.0 / frameRate : (frameDelayConstant - frameDelay)
         previewTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             DispatchQueue.main.async {
                 guard !selectedPhotos.isEmpty else { return }
@@ -311,7 +312,7 @@ extension CreateAnimationView {
         } else {
             AnimationManager.shared.createGIF(
                 from: selectedPhotos,
-                frameDelay: 1.6 - frameDelay,
+                frameDelay: frameDelayConstant - frameDelay,
                 name: project.name,
                 resolution: resolution,
                 maxLoopCount: loopCount,
