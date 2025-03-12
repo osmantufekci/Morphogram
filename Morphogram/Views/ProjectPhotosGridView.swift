@@ -19,6 +19,8 @@ struct ProjectPhotosGridView: View {
     @State private var isLoading = false
     @State private var progress: Float = 0
     @State private var totalPhotos: Int = 0
+    @State private var selectedPhotos: Set<ProjectPhoto> = []
+    @State private var showDeleteConfirmation = false
     private static let initialGridCount = 3
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var router: NavigationManager
@@ -30,8 +32,10 @@ struct ProjectPhotosGridView: View {
         ZStack {
             VStack {
                 if isEditing {
-                    ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
-                        .padding()
+                    HStack {
+                        ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
+                    }
+                    .padding()
                 }
                 ScrollView {
                     LazyVGrid(columns: columns) {
@@ -51,9 +55,7 @@ struct ProjectPhotosGridView: View {
                             }
                         }
                         
-                        ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) {
-                            index,
-                            photo in
+                        ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) { index, photo in
                             GeometryReader { geo in
                                 if let fileName = photo.fileName {
                                     ZStack(alignment: .topTrailing) {
@@ -61,15 +63,23 @@ struct ProjectPhotosGridView: View {
                                             .frame(width: geo.size.width, height: geo.size.width)
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
                                             .onTapGesture {
-                                                router.navigate(
-                                                    FullscreenPhotoView(
-                                                        photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
-                                                        initialIndex: index,
-                                                        onDelete: { photo in
-                                                            deletePhoto(photo)
-                                                        }
-                                                    ).environmentObject(router)
-                                                )
+                                                if isEditing {
+                                                    if selectedPhotos.contains(photo) {
+                                                        selectedPhotos.remove(photo)
+                                                    } else {
+                                                        selectedPhotos.insert(photo)
+                                                    }
+                                                } else {
+                                                    router.navigate(
+                                                        FullscreenPhotoView(
+                                                            photos: project.photos.sorted(by: { $0.createdAt > $1.createdAt }),
+                                                            initialIndex: index,
+                                                            onDelete: { photo in
+                                                                deletePhoto(photo)
+                                                            }
+                                                        ).environmentObject(router)
+                                                    )
+                                                }
                                             }
                                     }
                                     .onAppear {
@@ -133,22 +143,14 @@ struct ProjectPhotosGridView: View {
                             )
                             .overlay(alignment: .topTrailing, content: {
                                 if isEditing {
-                                    Button(action: {
-                                        withAnimation {
-                                            deletePhoto(photo)
-                                            isEditing = !project.photos.isEmpty
-                                        }
-                                    }) {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(.pink)
-                                            .background(Color.white)
-                                            .clipShape(Circle())
-                                    }
-                                    .offset(x: 7, y: -7)
+                                    Image(systemName: selectedPhotos.contains(photo) ? "checkmark.circle.fill" : "circle")
+                                        .font(.title2)
+                                        .foregroundColor(selectedPhotos.contains(photo) ? .green : .gray)
+                                        .background(Color.white)
+                                        .clipShape(Circle())
+                                        .offset(x: 7, y: -7)
                                 }
                             })
-                            .wiggle(isActive: isEditing)
                         }
                     }
                     .padding()
@@ -156,6 +158,21 @@ struct ProjectPhotosGridView: View {
                 .navigationTitle("\(project.name) (\(project.photos.count))")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    if isEditing {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button(action: {
+                                showDeleteConfirmation = true
+                            }) {
+                                HStack(spacing: 0) {
+                                    Image(systemName: "trash.fill")
+                                    Text("(\(selectedPhotos.count))")
+                                }
+                            }
+                            .foregroundColor(selectedPhotos.isEmpty ? .gray : .pink)
+                            .disabled(selectedPhotos.isEmpty)
+                        }
+                    }
+                    
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
                             withAnimation {
@@ -251,6 +268,22 @@ struct ProjectPhotosGridView: View {
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraView(project: project)
+        }
+        .confirmationDialog(
+            "\(selectedPhotos.count) adet fotoğraf silinecek",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Sil", role: .destructive) {
+                for photo in selectedPhotos {
+                    deletePhoto(photo)
+                }
+                selectedPhotos.removeAll()
+                isEditing = !project.photos.isEmpty
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Bu işlem geri alınamaz")
         }
     }
     

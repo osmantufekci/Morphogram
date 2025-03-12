@@ -13,6 +13,7 @@ struct FullscreenPhotoView: View {
     @State private var showShareSheet = false
     @State private var showSettings = false
     @State private var photos: [ProjectPhoto]
+    @State private var currentPhoto: ProjectPhoto?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var router: NavigationManager
     
@@ -28,22 +29,28 @@ struct FullscreenPhotoView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Fotoğraf görüntüleyici
-            TabView(selection: $currentIndex) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                    LazyView {
-                        AsyncImageView(fileName: photo.fileName ?? "", downSampled: true)
-                            .scaledToFit()
+            GeometryReader { geometry in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollViewReader{ scrollView in
+                        LazyHStack(spacing: 0) {
+                            ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                                AsyncImageView(fileName: photo.fileName ?? "", downSampled: true)
+                                    .scaledToFit()
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .id(index)
+                                    .onAppear {
+                                        currentIndex = index
+                                    }
+                            }
+                        }
+                        .onAppear {
+                            scrollView.scrollTo(initialIndex, anchor: .center)
+                        }
                     }
-                    .tag(index)
                 }
+                .scrollTargetBehavior(.paging)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
             .background(.black)
-            // Lazy loading için
-            .onAppear {
-                UITableView.appearance().isPrefetchingEnabled = true
-            }
             .clipShape(
                 .rect(
                     bottomLeadingRadius: 15,
