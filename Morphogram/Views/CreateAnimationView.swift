@@ -45,6 +45,7 @@ struct CreateAnimationView: View {
     @State private var showingExportSheet = false
     @State private var errorMessage: String?
     @State private var showingError = false
+    @State private var showingSharingError = false
     @State private var currentPreviewIndex = 0
     @State private var previewTimer: Timer?
     @State private var selectedPhotos: Array<String> = []
@@ -231,9 +232,16 @@ struct CreateAnimationView: View {
         } message: {
             Text(errorMessage ?? "Bilinmeyen bir hata oluştu")
         }
+        .alert("Hata", isPresented: $showingSharingError) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "Paylaşılırken bir hata meydana geldi")
+        }
         .sheet(isPresented: $showingExportSheet) {
             if let url = exportURL {
-                ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)])
+                ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)], onError: {
+                    showingSharingError.toggle()
+                })
             }
         }
         .task {

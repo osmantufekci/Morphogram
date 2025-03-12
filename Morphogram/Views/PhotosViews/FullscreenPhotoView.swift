@@ -12,6 +12,7 @@ struct FullscreenPhotoView: View {
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
     @State private var showSettings = false
+    @State private var showingError = false
     @State private var photos: [ProjectPhoto]
     @State private var currentPhoto: ProjectPhoto?
     @Environment(\.dismiss) private var dismiss
@@ -196,6 +197,7 @@ struct FullscreenPhotoView: View {
             }
             Button("İptal", role: .cancel) {}
         }
+        
         .sheet(isPresented: $showShareSheet) {
             if let project = photos[currentIndex].project, let fileName = photos[currentIndex].fileName {
                 ShareSheet(
@@ -206,20 +208,15 @@ struct FullscreenPhotoView: View {
                         ).first!.appendingPathComponent(fileName),
                         projectName: project.name
                     )]
-                )
+                ) {
+                    showingError.toggle()
+                }
             }
         }
-    }
-}
-
-struct LazyView<Content: View>: View {
-    let build: () -> Content
-    
-    init(_ build: @escaping () -> Content) {
-        self.build = build
-    }
-    
-    var body: Content {
-        build()
+        .alert("Hata", isPresented: $showingError) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text("Paylaşılırken bir hata meydana geldi")
+        }
     }
 }
