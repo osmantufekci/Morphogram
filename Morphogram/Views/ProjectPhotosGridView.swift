@@ -33,13 +33,12 @@ struct ProjectPhotosGridView: View {
             VStack {
                 if isEditing {
                     HStack {
-                        ColumnStepper(title: "Kolon: \(columns.count)", range: 1...6, columns: $columns)
+                        ColumnStepper(title: "Kolon Adedi: \(columns.count)", range: 1...6, columns: $columns)
                     }
                     .padding()
                 }
                 ScrollView {
                     LazyVGrid(columns: columns) {
-                        
                         if !isEditing {
                             Button(action: {
                                 showAddSheet = true
@@ -54,7 +53,6 @@ struct ProjectPhotosGridView: View {
                                 }
                             }
                         }
-                        
                         ForEach(Array(project.photos.sorted(by: { $0.createdAt > $1.createdAt }).enumerated()), id: \.element.id) { index, photo in
                             GeometryReader { geo in
                                 if let fileName = photo.fileName {
@@ -62,6 +60,7 @@ struct ProjectPhotosGridView: View {
                                         AsyncImageView(fileName: fileName, loadFullResolution: false)
                                             .frame(width: geo.size.width, height: geo.size.width)
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .contentShape(RoundedRectangle(cornerRadius: 8))
                                             .onTapGesture {
                                                 if isEditing {
                                                     if selectedPhotos.contains(photo) {
@@ -175,7 +174,7 @@ struct ProjectPhotosGridView: View {
                     
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            withAnimation {
+                            withAnimation(.snappy) {
                                 isEditing.toggle()
                             }
                         }) {

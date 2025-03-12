@@ -83,7 +83,7 @@ struct CameraView: View {
                             // Fotoğrafı kaydet
                             if let finalImage = capturedImage {
                                 savePhoto(image: finalImage)
-                                withAnimation {
+                                withAnimation(.snappy) {
                                     UIScreen.main.brightness = originalBrightness
                                 }
                                 
@@ -170,7 +170,7 @@ struct CameraView: View {
                             
                             Button(action: {
                                 if cameraManager.currentPosition == .front && flashMode != .off {
-                                    withAnimation {
+                                    withAnimation(.snappy) {
                                         isScreenFlashActive = true
                                         originalBrightness = UIScreen.main.brightness
                                         UIScreen.main.brightness = 1.0
@@ -180,7 +180,7 @@ struct CameraView: View {
                                 cameraManager.takePhoto { result in
                                     if cameraManager.currentPosition == .front {
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                            withAnimation {
+                                            withAnimation(.snappy) {
                                                 isScreenFlashActive = false
                                             }
                                         }

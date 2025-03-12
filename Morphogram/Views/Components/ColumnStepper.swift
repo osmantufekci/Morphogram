@@ -21,7 +21,7 @@ struct ColumnStepper: View {
 
     var body: some View {
         Stepper(title, value: $numColumns, in: range, step: 1) { _ in
-            withAnimation { columns = Array(repeating: GridItem(.flexible()), count: numColumns) }
+            withAnimation(.snappy) { columns = Array(repeating: GridItem(.flexible()), count: numColumns) }
         }
     }
 }
