@@ -36,6 +36,7 @@ final class AnimationManager {
         name: String,
         resolution outputSize: Resolution,
         watermarkPosition: WatermarkPosition = .center,
+        maxLoopCount: Int = 0,
         onProgress: ((Float) -> Void)? = nil,
         completion: @escaping (URL?) -> Void
     ) {
@@ -84,76 +85,92 @@ final class AnimationManager {
             videoWriterInput.expectsMediaDataInRealTime = false
             videoWriter.add(videoWriterInput)
         }
-        var chosenImages = images
-        let imageCount = Float(images.count)
+        
+        let originalImages = images
+        
+        let totalFrameCount = maxLoopCount <= 1 ? originalImages.count : originalImages.count * maxLoopCount
+        
         if videoWriter.startWriting() {
             videoWriter.startSession(atSourceTime: CMTime.zero)
             assert(pixelBufferAdaptor.pixelBufferPool != nil)
             
             let mediaQueue = DispatchQueue(label: "mediaInputQueue")
             
-            videoWriterInput.requestMediaDataWhenReady(
-                on: mediaQueue,
-                using: {
-                    let fps: Int32 = Int32(frameRate)
-                    let frameDuration = CMTimeMake(value: 1, timescale: fps)
-                    
-                    var frameCount: Int64 = 0
-                    var appendSucceeded = true
-                    
-                    while (!chosenImages.isEmpty) {
-                        if (videoWriterInput.isReadyForMoreMediaData) {
-                            guard var nextPhoto = ImageManager.shared.loadImage(fileName: chosenImages.remove(at: 0)) else { continue }
-                            let lastFrameTime = CMTimeMake(value: frameCount, timescale: fps)
-                            let presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration)
+            videoWriterInput.requestMediaDataWhenReady(on: mediaQueue, using: {
+                let fps: Int32 = Int32(frameRate)
+                let frameDuration = CMTimeMake(value: 1, timescale: fps)
+                
+                var frameCount: Int64 = 0
+                var currentLoopCount = 0
+                var appendSucceeded = true
+                
+                let targetLoopCount = maxLoopCount <= 1 ? 1 : maxLoopCount
+                
+                while currentLoopCount < targetLoopCount && appendSucceeded {
+                    for imageName in originalImages {
+                        if !videoWriterInput.isReadyForMoreMediaData {
+                            Thread.sleep(forTimeInterval: 0.1)
+                            continue
+                        }
+                        
+                        guard let nextPhoto = ImageManager.shared.loadImage(fileName: imageName) else { continue }
+                        
+                        let lastFrameTime = CMTimeMake(value: frameCount, timescale: fps)
+                        let presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration)
+                        
+                        var pixelBuffer: CVPixelBuffer? = nil
+                        let status: CVReturn = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelBufferAdaptor.pixelBufferPool!, &pixelBuffer)
+                        
+                        if let pixelBuffer = pixelBuffer, status == 0 {
+                            let managedPixelBuffer = pixelBuffer
                             
-                            var pixelBuffer: CVPixelBuffer? = nil
-                            let status: CVReturn = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelBufferAdaptor.pixelBufferPool!, &pixelBuffer)
+                            CVPixelBufferLockBaseAddress(managedPixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
                             
-                            if let pixelBuffer = pixelBuffer,
-                               status == 0 {
-                                let managedPixelBuffer = pixelBuffer
-                                
-                                CVPixelBufferLockBaseAddress(managedPixelBuffer, [])
-                                
-                                let data = CVPixelBufferGetBaseAddress(managedPixelBuffer)
-                                let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-                                let context = CGContext(
-                                    data: data,
-                                    width: Int(outputSize.size.width),
-                                    height: Int(outputSize.size.height),
-                                    bitsPerComponent: 8,
-                                    bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer),
-                                    space: rgbColorSpace,
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-                                )
-                                
-                                autoreleasepool {
-                                    if let fixedPhoto = nextPhoto.fixImageOrientation() {
-                                        nextPhoto = fixedPhoto
-                                }
-                            }
+                            let context = CGContext(
+                                data: CVPixelBufferGetBaseAddress(managedPixelBuffer),
+                                width: Int(outputSize.size.width),
+                                height: Int(outputSize.size.height),
+                                bitsPerComponent: 8,
+                                bytesPerRow: CVPixelBufferGetBytesPerRow(managedPixelBuffer),
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                            )
                             
                             context?.clear(CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
                             
-                            context?.draw(nextPhoto.cgImage!, in: CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
+                            if let transform = nextPhoto.getTransform(by: outputSize.size) { context?.concatenate(transform) }
                             
-                            CVPixelBufferUnlockBaseAddress(managedPixelBuffer, [])
+                            switch nextPhoto.imageOrientation {
+                            case .left, .leftMirrored, .right, .rightMirrored:
+                                context?.draw(nextPhoto.cgImage!, in: CGRect(x: 0, y: 0, width: outputSize.size.height, height: outputSize.size.width))
+                            default:
+                                context?.draw(nextPhoto.cgImage!, in: CGRect(x: 0, y: 0, width: outputSize.size.width, height: outputSize.size.height))
+                            }
+                            
+                            CVPixelBufferUnlockBaseAddress(managedPixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
                             
                             appendSucceeded = pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime)
+                            
+                            if !appendSucceeded {
+                                print("Failed to append pixel buffer")
+                                break
+                            }
+                            
+                            frameCount += 1
+                            
+                            let progress = Float(frameCount) / Float(totalFrameCount)
+                            onProgress?(progress)
                         } else {
                             print("Failed to allocate pixel buffer")
                             appendSucceeded = false
+                            break
                         }
                     }
-                    if !appendSucceeded {
-                        onProgress?(0)
-                        return
-                    }
-                    frameCount += 1
-                    print("Progress:", Float(frameCount) / imageCount, "(\(frameCount) / \( imageCount) Images: \(chosenImages.count)")
-                    onProgress?(Float(frameCount) / imageCount)
+                    
+                    currentLoopCount += 1
+                    print("Completed loop \(currentLoopCount) of \(targetLoopCount)")
                 }
+                
                 videoWriterInput.markAsFinished()
                 videoWriter.finishWriting { () -> Void in
                     completion(videoOutputURL)
@@ -168,7 +185,7 @@ final class AnimationManager {
         name: String,
         resolution outputSize: Resolution,
         watermarkPosition: WatermarkPosition = .center,
-        loopCount: Int = 0,
+        maxLoopCount: Int = 0,
         onProgress: ((Float) -> Void)? = nil,
         completion: @escaping (URL?) -> Void
     ) {
@@ -195,7 +212,7 @@ final class AnimationManager {
             
             let frameProperties = [kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFDelayTime as String: frameDelay,
-                kCGImagePropertyGIFLoopCount as String: loopCount,
+                kCGImagePropertyGIFLoopCount as String: maxLoopCount,
                 kCGImagePropertyColorModel as String: kCGImagePropertyColorModelRGB,
                 kCGImagePropertyGIFHasGlobalColorMap as String: true,
                 kCGImagePropertyDepth as String: 8,
@@ -219,3 +236,4 @@ final class AnimationManager {
         }
     }
 }
+

@@ -51,13 +51,14 @@ struct CreateAnimationView: View {
     @State private var selectedPhotos: Array<String> = []
     @State private var watermarkPosition: WatermarkPosition = .center
     @State private var progress: Float = 0
+    @State private var loopCount: Int = 1
     @State private var sortedPhotos: [ProjectPhoto] = []
     @State private var resolution: Resolution = .k720p
     @State private var currentPreviewImage: UIImage = UIImage()
     
     private var animationDuration: Double {
         let photoCount = Double(selectedPhotos.count)
-        return animationType == .video ? photoCount / frameRate : photoCount * (1.1 - frameDelay)
+        return animationType == .video ? (photoCount / frameRate) * Double(loopCount) : (photoCount * (1.1 - frameDelay)) * Double(loopCount)
     }
     
     enum AnimationType: String, CaseIterable {
@@ -138,6 +139,15 @@ struct CreateAnimationView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            }
+            .disabled(isCreatingAnimation)
+            
+            Section("Tekrar Sayısı") {
+                Picker("Tekrar", selection: $loopCount) {
+                    ForEach(1...5, id: \.self) { count in
+                        Text("\(count) kez").tag(count)
+                    }
+                }
             }
             .disabled(isCreatingAnimation)
             
@@ -245,7 +255,7 @@ struct CreateAnimationView: View {
             }
         }
         .task {
-            sortedPhotos = project.photos.sorted { $0.createdAt < $1.createdAt }
+            sortedPhotos = project.photos.sorted { $0.createdAt > $1.createdAt }
             selectedPhotos = sortedPhotos.compactMap { $0.fileName }
             startPreview()
         }
@@ -291,6 +301,7 @@ extension CreateAnimationView {
                 frameRate: Float(frameRate),
                 name: project.name,
                 resolution: resolution,
+                maxLoopCount: loopCount,
                 onProgress: { newProgress in
                     progress = newProgress
                 }
@@ -303,6 +314,7 @@ extension CreateAnimationView {
                 frameDelay: 1.6 - frameDelay,
                 name: project.name,
                 resolution: resolution,
+                maxLoopCount: loopCount,
                 onProgress: { newProgress in
                     progress = newProgress
                 }
