@@ -6,6 +6,8 @@ struct Dashboard: View {
     @EnvironmentObject var router: NavigationManager
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Project.lastPhotoDate) private var allProjects: [Project]
+    @State private var showingHistoryPopover = false
+    @State private var animationHistory: [AnimationHistoryItem] = []
     
     var body: some View {
             ZStack {
@@ -75,6 +77,20 @@ struct Dashboard: View {
                             .listRowSeparator(.hidden)
                         }
                         .listStyle(.plain)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button {
+                                    loadAnimationHistory()
+                                    showingHistoryPopover = true
+                                } label: {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                }
+                                .popover(isPresented: $showingHistoryPopover) {
+                                    AnimationHistoryView(history: $animationHistory)
+                                        .presentationCompactAdaptation(.popover)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -84,6 +100,55 @@ struct Dashboard: View {
 }
 
 extension Dashboard {
+    private func loadAnimationHistory() {
+        let fileManager = FileManager.default
+        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let historyDirectory = documentsDirectory.appendingPathComponent("AnimationHistory", isDirectory: true)
+        
+        do {
+            // Klasör yoksa oluştur
+            if !fileManager.fileExists(atPath: historyDirectory.path) {
+                try fileManager.createDirectory(at: historyDirectory, withIntermediateDirectories: true)
+                animationHistory = []
+                return
+            }
+            
+            // Klasördeki dosyaları listele
+            let fileURLs = try fileManager.contentsOfDirectory(at: historyDirectory, includingPropertiesForKeys: [.creationDateKey, .fileSizeKey], options: .skipsHiddenFiles)
+            
+            // Dosyaları tarihe göre sırala (en yeniden en eskiye)
+            let sortedFiles = try fileURLs.sorted { (url1, url2) -> Bool in
+                let date1 = try url1.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
+                let date2 = try url2.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
+                return date1 > date2
+            }
+            
+            // AnimationHistoryItem'lara dönüştür
+            animationHistory = sortedFiles.compactMap { url in
+                do {
+                    let attributes = try fileManager.attributesOfItem(atPath: url.path)
+                    let creationDate = attributes[.creationDate] as? Date ?? Date()
+                    let fileSize = attributes[.size] as? Int ?? 0
+                    let isGIF = url.pathExtension.lowercased() == "gif"
+                    
+                    return AnimationHistoryItem(
+                        url: url,
+                        name: url.deletingPathExtension().lastPathComponent,
+                        date: creationDate,
+                        type: isGIF ? .gif : .video,
+                        size: fileSize
+                    )
+                } catch {
+                    print("Dosya bilgileri alınamadı: \(error)")
+                    return nil
+                }
+            }
+        } catch {
+            print("Geçmiş yüklenirken hata: \(error)")
+            animationHistory = []
+        }
+    }
+    
     private func deleteProject(_ project: Project) {
         // Önce projeye ait tüm fotoğrafları sil
         for photo in project.photos {

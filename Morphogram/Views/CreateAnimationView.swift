@@ -416,6 +416,9 @@ extension CreateAnimationView {
         if let url = url {
             exportURL = url
             showingExportSheet = true
+            
+            // Animasyonu geçmişe kaydet
+            saveAnimationToHistory(url: url)
         } else {
             errorMessage = "Animasyon oluşturulamadı"
             showingError = true
@@ -423,7 +426,31 @@ extension CreateAnimationView {
         
         isCreatingAnimation = false
     }
+    
+    private func saveAnimationToHistory(url: URL) {
+        let fileManager = FileManager.default
+        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let historyDirectory = documentsDirectory.appendingPathComponent("AnimationHistory", isDirectory: true)
+        
+        do {
+            // Klasör yoksa oluştur
+            if !fileManager.fileExists(atPath: historyDirectory.path) {
+                try fileManager.createDirectory(at: historyDirectory, withIntermediateDirectories: true)
+            }
+            
+            // Dosyayı kopyala
+            let fileName = url.lastPathComponent
+            let destinationURL = historyDirectory.appendingPathComponent(fileName)
+            
+            // Aynı isimde dosya varsa sil
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try fileManager.removeItem(at: destinationURL)
+            }
+            
+            try fileManager.copyItem(at: url, to: destinationURL)
+        } catch {
+            showingError.toggle()
+            errorMessage = "Animasyon kaydedilirken bir hata oluştu."
+        }
+    }
 }
-
-
-

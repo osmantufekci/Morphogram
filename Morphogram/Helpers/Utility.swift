@@ -7,6 +7,32 @@
 
 import Foundation
 import UIKit
+import AVFoundation
+
+final class Utility {
+    class func getThumbnailImage(forUrl url: URL) -> UIImage {
+        let asset: AVAsset = AVURLAsset(url: url)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        
+        do {
+            let thumbnailImage = try imageGenerator.copyCGImage(at: CMTimeMake(value: 1, timescale: 60), actualTime: nil)
+            return UIImage(cgImage: thumbnailImage)
+        } catch let error {
+            print(error)
+        }
+        
+        do {
+            let image = UIImage(
+                data: try Data(contentsOf: url)
+            ) ?? .init()
+            return image
+        } catch let error {
+            print(error)
+        }
+        
+        return UIImage()
+    }
+}
 
 func formatDate(_ date: Date) -> String {
     let formatter = DateFormatter()
