@@ -13,6 +13,7 @@ struct FullscreenPhotoView: View {
     @State private var showShareSheet = false
     @State private var showSettings = false
     @State private var showingError = false
+    @State private var errorMessage: String?
     @State private var photos: [ProjectPhoto]
     @State private var currentPhoto: ProjectPhoto?
     @Environment(\.dismiss) private var dismiss
@@ -208,7 +209,8 @@ struct FullscreenPhotoView: View {
                         ).first!.appendingPathComponent(fileName),
                         projectName: project.name
                     )]
-                ) {
+                ) { message in
+                    errorMessage = message
                     showingError.toggle()
                 }
             }
@@ -216,7 +218,7 @@ struct FullscreenPhotoView: View {
         .alert("Hata", isPresented: $showingError) {
             Button("Tamam", role: .cancel) { }
         } message: {
-            Text("Paylaşılırken bir hata meydana geldi")
+            Text(errorMessage ?? "Paylaşılırken bir hata meydana geldi")
         }
     }
 }

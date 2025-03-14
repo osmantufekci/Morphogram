@@ -1,6 +1,30 @@
 import SwiftUI
 import PhotosUI
 
+enum TextPosition: String, CaseIterable {
+    case none, top, bottom
+    
+    var image: Image {
+        switch self {
+        case .top:
+            Image(systemName: "square.grid.3x3.topmiddle.filled")
+        case .bottom:
+            Image(systemName: "square.grid.3x3.bottommiddle.filled")
+        case .none:
+            Image(systemName: "x.square")
+        }
+    }
+    
+    
+    var alignment: Alignment {
+        switch self {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .none: return .leading //kullanılmayacak
+        }
+    }
+}
+
 enum WatermarkPosition: String, CaseIterable {
     case topLeft = "Sol Üst"
     case bottomRight = "Sağ Alt"
@@ -11,15 +35,15 @@ enum WatermarkPosition: String, CaseIterable {
     var image: Image {
         switch self {
         case .topRight:
-            Image(systemName: "arrow.up.right")
+            Image(systemName: "square.grid.3x3.topright.filled")
         case .bottomRight:
-            Image(systemName: "arrow.down.right")
+            Image(systemName: "square.grid.3x3.bottomright.filled")
         case .center:
             Image(systemName: "square.grid.3x3.middle.filled")
         case .topLeft:
-            Image(systemName: "arrow.up.left")
+            Image(systemName: "square.grid.3x3.topleft.filled")
         case .bottomLeft:
-            Image(systemName: "arrow.down.left")
+            Image(systemName: "square.grid.3x3.bottomleft.filled")
         }
     }
     
@@ -35,6 +59,8 @@ enum WatermarkPosition: String, CaseIterable {
 }
 
 struct CreateAnimationView: View {
+    @AppStorage("hasPro") var freemium: Bool = true
+    
     let project: Project
     let frameDelayConstant = 1.1
     @Environment(\.dismiss) private var dismiss
@@ -51,15 +77,19 @@ struct CreateAnimationView: View {
     @State private var previewTimer: Timer?
     @State private var selectedPhotos: Array<String> = []
     @State private var watermarkPosition: WatermarkPosition = .center
+    @State private var textPosition: TextPosition = .bottom
     @State private var progress: Float = 0
-    @State private var loopCount: Int = 1
+    @State private var loopCount: Int = 0
     @State private var sortedPhotos: [ProjectPhoto] = []
-    @State private var resolution: Resolution = .k720p
+    @State private var resolution: Resolution = .k1080p
+    @State private var useText: Bool = true
     @State private var currentPreviewImage: UIImage = UIImage()
+    @State private var currentProjetPhoto: ProjectPhoto?
+    @State private var fontSize: CustomFontSize = .small
     
     private var animationDuration: Double {
         let photoCount = Double(selectedPhotos.count)
-        return animationType == .video ? (photoCount / frameRate) * Double(loopCount) : (photoCount * (frameDelayConstant - frameDelay)) * Double(loopCount)
+        return animationType == .video ? (photoCount / frameRate) * Double(max(1, loopCount)) : (photoCount * (frameDelayConstant - frameDelay)) * Double(max(1, loopCount))
     }
     
     enum AnimationType: String, CaseIterable {
@@ -77,13 +107,25 @@ struct CreateAnimationView: View {
                         .frame(height: 400)
                         .scaledToFit()
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                    WatermarkOverlay(position: watermarkPosition)
+                        .if(freemium) { view in
+                            view.watermark(position: watermarkPosition, size: resolution.size)
+                        }
+                        .if(useText && currentProjetPhoto?.createdAt != nil) { view in
+                            view.datemark(
+                                position: textPosition,
+                                text: currentProjetPhoto!.createdAt.formatted(date: .numeric, time: .omitted),
+                                size: resolution.size,
+                                fontSize: fontSize
+                            )
+                        }
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Image(systemName: "clock")
-                        Text(String(format: "Süre: %.1f saniye", animationDuration))
+                    if animationType != .gif {
+                        HStack {
+                            Image(systemName: "clock")
+                            Text(String(format: "Süre: %.1f saniye", animationDuration))
+                        }
                     }
                     
                     HStack {
@@ -125,6 +167,10 @@ struct CreateAnimationView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
                         Text("Videoya göre daha yüksek dosya boyutu")
+                        
+                        if selectedPhotos.count >= 100, resolution == .k4K {
+                            Text("Paylaşım veya Kaydetme başarısız olabilir.")
+                        }
                     }
                     .padding(.top, 4)
                     .font(.footnote)
@@ -145,6 +191,9 @@ struct CreateAnimationView: View {
             
             Section("Tekrar Sayısı") {
                 Picker("Tekrar", selection: $loopCount) {
+                    if AnimationType.gif == animationType {
+                        Text("Sonsuz").tag(0)
+                    }
                     ForEach(1...5, id: \.self) { count in
                         Text("\(count) kez").tag(count)
                     }
@@ -152,7 +201,39 @@ struct CreateAnimationView: View {
             }
             .disabled(isCreatingAnimation)
             
-            Section {
+            Section("Tarihi Göster") {
+                Picker("Tarih", selection: $textPosition) {
+                    ForEach(TextPosition.allCases, id: \.self) { position in
+                        position.image
+                            .foregroundColor(.red)
+                            .tag(position)
+                    }
+                }
+                .pickerStyle(.segmented)
+                if textPosition != .none {
+                    Picker("Font", selection: $fontSize) {
+                        ForEach(CustomFontSize.allCases, id: \.self) { size in
+                            size.icon
+                                .tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+            .disabled(isCreatingAnimation)
+            
+            Section("Filigran Konumu") {
+                Picker("Konum", selection: $watermarkPosition) {
+                    ForEach(WatermarkPosition.allCases, id: \.self) { position in
+                        position.image.tag(position)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .disabled(isCreatingAnimation)
+            
+            
+            Section("") {
                 Button(action: {
                     Task {
                         await createAnimation()
@@ -166,8 +247,9 @@ struct CreateAnimationView: View {
                         }
                         .frame(maxWidth: .infinity)
                     } else {
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .center) {
                             Text("\(animationType.rawValue) Oluştur")
+                                .frame(maxWidth: .infinity)
                             if selectedPhotos.count < 2 {
                                 HStack {
                                     Image(systemName: "info.circle")
@@ -179,7 +261,9 @@ struct CreateAnimationView: View {
                             }
                         }
                     }
-                }.disabled(selectedPhotos.count < 2)
+                }
+                .frame(maxWidth: .infinity)
+                .disabled(selectedPhotos.count < 2)
                 
                 if isCreatingAnimation {
                     HStack {
@@ -191,17 +275,8 @@ struct CreateAnimationView: View {
                     .foregroundColor(.secondary)
                 }
             }
+            .bold()
             .disabled(isCreatingAnimation)
-            
-//            Section("Filigran Konumu") {
-//                Picker("Konum", selection: $watermarkPosition) {
-//                    ForEach(WatermarkPosition.allCases, id: \.self) { position in
-//                        position.image.tag(position)
-//                    }
-//                }
-//                .pickerStyle(.segmented)
-//            }
-//            .disabled(isCreatingAnimation)
             
             Section("Kullanılan Fotoğraflar (\(selectedPhotos.count))") {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -236,6 +311,7 @@ struct CreateAnimationView: View {
             }
             .disabled(isCreatingAnimation)
         }
+        .listSectionSpacing(8)
         .navigationTitle("Animasyon Oluştur")
         .navigationBarTitleDisplayMode(.automatic)
         .alert("Hata", isPresented: $showingError) {
@@ -250,7 +326,8 @@ struct CreateAnimationView: View {
         }
         .sheet(isPresented: $showingExportSheet) {
             if let url = exportURL {
-                ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)], onError: {
+                ShareSheet(activityItems: [CustomActivityItemSource(url: url, projectName: project.name)], onError: { message in
+                    errorMessage = message
                     showingSharingError.toggle()
                 })
             }
@@ -281,6 +358,7 @@ extension CreateAnimationView {
                 guard !selectedPhotos.isEmpty else { return }
                 currentPreviewIndex = (currentPreviewIndex + 1) % selectedPhotos.count
                 currentPreviewImage = ImageManager.shared.loadImage(fileName: selectedPhotos[currentPreviewIndex]) ?? .init()
+                currentProjetPhoto = sortedPhotos.first(where: {$0.fileName == selectedPhotos[currentPreviewIndex]})
             }
         }
     }
@@ -298,11 +376,14 @@ extension CreateAnimationView {
         
         if animationType == .video {
             AnimationManager.shared.createVideo(
-                from: selectedPhotos,
+                from: sortedPhotos.filter({selectedPhotos.contains($0.fileName ?? "")}),
                 frameRate: Float(frameRate),
                 name: project.name,
                 resolution: resolution,
+                watermarkPosition: watermarkPosition,
+                textPosition: textPosition,
                 maxLoopCount: loopCount,
+                useText: textPosition != .none,
                 onProgress: { newProgress in
                     progress = newProgress
                 }
@@ -311,11 +392,14 @@ extension CreateAnimationView {
             }
         } else {
             AnimationManager.shared.createGIF(
-                from: selectedPhotos,
+                from: sortedPhotos.filter({selectedPhotos.contains($0.fileName ?? "")}),
                 frameDelay: frameDelayConstant - frameDelay,
                 name: project.name,
                 resolution: resolution,
+                watermarkPosition: watermarkPosition,
+                textPosition: textPosition,
                 maxLoopCount: loopCount,
+                useText: textPosition != .none,
                 onProgress: { newProgress in
                     progress = newProgress
                 }

@@ -103,15 +103,16 @@ final class CustomActivityItemSource: NSObject, UIActivityItemSource {
 
 struct ShareSheet: UIViewControllerRepresentable {
     let activityItems: [Any]
-    let onError: (() -> Void)?
+    let onError: ((String) -> Void)?
     
     func makeUIViewController(context: Context) -> UIActivityViewController {
         let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
         controller.completionWithItemsHandler = { (activity, success, items, error) in
-            if success { controller.dismiss(animated: true) }
             if let error {
                 print(error.localizedDescription)
-                onError?()
+                onError?(error.localizedDescription)
+            } else if success {
+                controller.dismiss(animated: true)
             }
        }
         return controller
