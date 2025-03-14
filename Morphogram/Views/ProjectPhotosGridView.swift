@@ -20,6 +20,7 @@ struct ProjectPhotosGridView: View {
     @State private var progress: Float = 0
     @State private var totalPhotos: Int = 0
     @State private var selectedPhotos: Set<ProjectPhoto> = []
+    @State private var selectedForCollage: [ProjectPhoto] = []
     @State private var showDeleteConfirmation = false
     private static let initialGridCount = 3
     @Environment(\.modelContext) private var modelContext
@@ -65,8 +66,10 @@ struct ProjectPhotosGridView: View {
                                                 if isEditing {
                                                     if selectedPhotos.contains(photo) {
                                                         selectedPhotos.remove(photo)
+                                                        selectedForCollage.removeAll { $0.id == photo.id }
                                                     } else {
                                                         selectedPhotos.insert(photo)
+                                                        selectedForCollage.append(photo)
                                                     }
                                                 } else {
                                                     router.navigate(
@@ -88,6 +91,21 @@ struct ProjectPhotosGridView: View {
                                         itemSize = newSize
                                     }
                                     .contextMenu {
+                                        Button {
+                                            let image = ImageManager.shared.loadImage(fileName: project.photos.sorted(by: { $0.createdAt > $1.createdAt })[index].fileName ?? "")
+                                            router.navigate(
+                                                CollageView(collageItems: [CollageItem(image: image)])
+                                                    .navigationTransition(
+                                                        .zoom(
+                                                            sourceID: photo.id,
+                                                            in: zoomTransition
+                                                        )
+                                                    )
+                                            )
+                                        } label: {
+                                            Label("Kolaj yap", systemImage: "rectangle.lefthalf.filled")
+                                        }
+                                        
                                         Button {
                                             router.navigate(
                                                 FullscreenPhotoView(
@@ -155,10 +173,33 @@ struct ProjectPhotosGridView: View {
                     .padding()
                 }
                 .navigationTitle("\(project.name) (\(project.photos.count))")
-                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
-                    if isEditing {
-                        ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 4) {
+                            Button(action: {
+                                withAnimation(.snappy) {
+                                    isEditing.toggle()
+                                }
+                            }) {
+                                Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil.circle")
+                            }
+                            .disabled(project.photos.isEmpty)
+                            
+                            Button(
+                                action: {
+                                    router.navigate(
+                                        CollageView(
+                                            collageItems: selectedForCollage.compactMap({
+                                                CollageItem(image: ImageManager.shared.loadImage(fileName: $0.fileName))
+                                            })
+                                        )
+                                    )
+                                }) {
+                                    Image(systemName: selectedForCollage.count == 4 ? "squareshape.split.2x2.dotted" : "rectangle.split.2x1")
+                                }
+                                .disabled(!(selectedForCollage.count == 2 || selectedForCollage.count == 4))
+                            
                             Button(action: {
                                 showDeleteConfirmation = true
                             }) {
@@ -170,17 +211,6 @@ struct ProjectPhotosGridView: View {
                             .foregroundColor(selectedPhotos.isEmpty ? .gray : .pink)
                             .disabled(selectedPhotos.isEmpty)
                         }
-                    }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            withAnimation(.snappy) {
-                                isEditing.toggle()
-                            }
-                        }) {
-                            Label(isEditing ? "Bitti" : "Düzenle", systemImage: "pencil.circle")
-                        }
-                        .disabled(project.photos.isEmpty)
                     }
                 }
             }

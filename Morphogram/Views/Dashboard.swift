@@ -78,7 +78,7 @@ struct Dashboard: View {
                         }
                         .listStyle(.plain)
                         .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
+                            ToolbarItem(placement: .topBarTrailing) {
                                 Button {
                                     loadAnimationHistory()
                                     showingHistoryPopover = true
